@@ -1,16 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import {
-  CheckCircle2,
-  CreditCard,
-  Loader2,
-  MapPinned,
-  ShoppingBag,
-  Smartphone,
-  TicketPercent,
-  Wallet,
-} from "lucide-react";
+import { ArrowRight, CheckCircle2, MapPinned, ShoppingBag, TicketPercent } from "lucide-react";
 import { toast } from "sonner";
 import {
   cart,
@@ -21,16 +12,13 @@ import {
   reviewCartSelection,
   useCart,
 } from "@/lib/cart";
-import { triggerDelivery } from "@/services/delivery/delivery.api";
 import { createOrder } from "@/services/order/order.api";
-import { processPayment } from "@/services/payment/payment.api";
-import type { PaymentMethod } from "@/shared/order.types";
 
 export const Route = createFileRoute("/checkout")({
   head: () => ({
     meta: [
       { title: "Checkout - Chau Ngoc Thao" },
-      { name: "description", content: "Review your order and complete payment." },
+      { name: "description", content: "Complete delivery details and choose how to place the order." },
     ],
   }),
   component: CheckoutPage,
@@ -110,17 +98,6 @@ const PROMO_RULES: Record<string, { label: string; discount: number }> = {
   SHIPFREE: { label: "Free shipping", discount: SHIPPING_FEE },
 };
 
-const METHODS: {
-  id: PaymentMethod;
-  label: string;
-  icon: React.ComponentType<{ className?: string }>;
-  sub: string;
-}[] = [
-  { id: "card", label: "Credit Card", icon: CreditCard, sub: "Visa / Master / JCB" },
-  { id: "ewallet", label: "E-Wallet", icon: Smartphone, sub: "MoMo / ZaloPay" },
-  { id: "cod", label: "Cash on Delivery", icon: Wallet, sub: "Pay when your order arrives" },
-];
-
 function CheckoutPage() {
   const cartState = useCart();
   const reviewCartLines = reviewCartSelectedLines(cartState);
@@ -129,12 +106,12 @@ function CheckoutPage() {
   const navigate = useNavigate();
 
   const [fullName, setFullName] = useState("");
+  const [phone, setPhone] = useState("");
   const [province, setProvince] = useState(PROVINCES[57]);
   const [ward, setWard] = useState("");
   const [houseNumber, setHouseNumber] = useState("");
   const [note, setNote] = useState("");
   const [promoCode, setPromoCode] = useState("");
-  const [method, setMethod] = useState<PaymentMethod>("card");
   const [processing, setProcessing] = useState(false);
 
   const wardOptions = buildWardOptions(province);
@@ -154,7 +131,7 @@ function CheckoutPage() {
       <main className="mx-auto max-w-3xl px-5 py-20 text-center">
         <ShoppingBag className="mx-auto h-12 w-12 text-muted-foreground" />
         <h1 className="mt-4 text-3xl font-extrabold">Your cart is empty</h1>
-        <p className="mt-2 text-muted-foreground">Add a few favorites before heading to checkout.</p>
+        <p className="mt-2 text-muted-foreground">Add a few favorites before checking out.</p>
         <button
           onClick={() => navigate({ to: "/menu" })}
           className="mt-6 rounded-2xl bg-primary px-6 py-3 text-sm font-bold text-primary-foreground shadow-glow"
@@ -171,7 +148,7 @@ function CheckoutPage() {
         <ShoppingBag className="mx-auto h-12 w-12 text-muted-foreground" />
         <h1 className="mt-4 text-3xl font-extrabold">No items selected yet</h1>
         <p className="mt-2 text-muted-foreground">
-          Choose the products you want to pay for in Review Cart before continuing to checkout.
+          Choose the products you want to place an order for in Review Cart before continuing.
         </p>
         <button
           onClick={() => navigate({ to: "/reviewcart" })}
@@ -183,41 +160,45 @@ function CheckoutPage() {
     );
   }
 
-  const handlePayment = async () => {
-    if (!fullName || !province || !ward || !houseNumber) {
+  const validateCheckout = () => {
+    if (!fullName || !phone || !province || !ward || !houseNumber) {
       toast.error("Please complete all required customer details.");
+      return false;
+    }
+
+    return true;
+  };
+
+  const handleContinue = async () => {
+    if (!validateCheckout()) {
       return;
     }
 
     try {
       setProcessing(true);
+
       const order = await createOrder({
         customer: {
           name: fullName,
+          phone,
           province,
           ward,
           houseNumber,
           note: note.trim() || undefined,
         },
         lines,
-        paymentMethod: method,
+        paymentMethod: "pending",
         shippingFee: SHIPPING_FEE,
         promoCode: normalizedPromo || undefined,
         discountAmount,
       });
 
-      const payment = await processPayment(order.id, "SUCCESS", method);
       cart.removeMany(reviewCartSelection.getSelectedIds());
-
-      if (payment.status === "SUCCESS") {
-        await triggerDelivery(order.id, order.customer.address);
-        toast.success("Payment successful. Your order is now being prepared.");
-      }
-
-      navigate({ to: "/order/$orderId", params: { orderId: order.id } });
+      toast.success("Order created. Continue to the payment method page.");
+      navigate({ to: "/payment/$orderId", params: { orderId: order.id } });
     } catch (error) {
       console.error(error);
-      toast.error("Unable to complete checkout right now.");
+      toast.error("Unable to create your order right now.");
       setProcessing(false);
     }
   };
@@ -225,10 +206,10 @@ function CheckoutPage() {
   if (processing) {
     return (
       <main className="mx-auto mt-32 flex max-w-md flex-col items-center gap-4 px-5 text-center">
-        <Loader2 className="h-10 w-10 animate-spin text-primary" />
-        <p className="text-lg font-bold">Processing your payment...</p>
+        <CheckCircle2 className="h-10 w-10 text-primary" />
+        <p className="text-lg font-bold">Creating your order...</p>
         <p className="text-sm text-muted-foreground">
-          We are saving your order details and contacting the payment service.
+          We are saving your delivery details before moving to payment.
         </p>
       </main>
     );
@@ -238,9 +219,9 @@ function CheckoutPage() {
     <main className="mx-auto max-w-6xl px-5 py-10 pb-16">
       <header className="mb-8">
         <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">Checkout</p>
-        <h1 className="mt-1 text-4xl font-extrabold">Complete your payment</h1>
+        <h1 className="mt-1 text-4xl font-extrabold">Confirm delivery and place the order</h1>
         <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
-          Review your items, confirm the delivery details, and pay in one smooth step.
+          Dien thong tin giao hang truoc, sau do nhan Continue de sang trang chon phuong thuc thanh toan.
         </p>
       </header>
 
@@ -249,7 +230,7 @@ function CheckoutPage() {
           <Card
             badge="Part 1"
             title="Order summary"
-            description="Your products, quantity, shipping fee, and final amount stay visible at the top."
+            description="Review the selected products and final amount before placing the order."
           >
             <div className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
               <div className="space-y-3">
@@ -283,7 +264,7 @@ function CheckoutPage() {
                 <div className="rounded-2xl border border-primary/20 bg-card p-5 shadow-card">
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="h-5 w-5 text-primary" />
-                    <p className="text-sm font-bold">Payment snapshot</p>
+                    <p className="text-sm font-bold">Checkout snapshot</p>
                   </div>
                   <div className="mt-5 space-y-3 text-sm">
                     <PriceRow label="Items" value={`${count} products`} />
@@ -318,8 +299,8 @@ function CheckoutPage() {
         >
           <Card
             badge="Part 2"
-            title="Customer information"
-            description="All checkout details are entered here and saved when the customer clicks Pay now."
+            title="Delivery details"
+            description="Customer and delivery information are completed here before the order is created."
           >
             <div className="grid gap-6 lg:grid-cols-[1fr_380px]">
               <div className="space-y-6">
@@ -329,6 +310,12 @@ function CheckoutPage() {
                     value={fullName}
                     onChange={setFullName}
                     placeholder="Nguyen Van A"
+                  />
+                  <Field
+                    label="Phone number"
+                    value={phone}
+                    onChange={setPhone}
+                    placeholder="0901234567"
                   />
                   <SelectField
                     label="Province / City"
@@ -348,65 +335,37 @@ function CheckoutPage() {
                     onChange={setHouseNumber}
                     placeholder="12B Le Loi Street"
                   />
+                  <Field
+                    label="Promo code"
+                    value={promoCode}
+                    onChange={setPromoCode}
+                    placeholder="WELCOME10"
+                  />
                 </div>
 
-                <div className="grid gap-3 sm:grid-cols-2">
+                <div className="grid gap-3 sm:grid-cols-[1fr_260px]">
                   <TextAreaField
                     label="Additional request"
                     value={note}
                     onChange={setNote}
                     placeholder="Less spicy, call before arrival, leave at reception..."
                   />
-                  <div className="space-y-3">
-                    <Field
-                      label="Promo code"
-                      value={promoCode}
-                      onChange={setPromoCode}
-                      placeholder="WELCOME10"
-                    />
-                    <div className="rounded-2xl border border-dashed border-primary/20 bg-primary/10 p-4">
-                      <div className="flex items-center gap-2">
-                        <TicketPercent className="h-4 w-4 text-primary" />
-                        <p className="text-sm font-bold">Demo promo codes</p>
-                      </div>
-                      <p className="mt-2 text-xs text-muted-foreground">
-                        `WELCOME10` saves 10k, `SUNNY15` saves 15k, `SHIPFREE` removes the shipping fee.
-                      </p>
-                      <p className="mt-2 text-xs font-semibold text-foreground/70">
-                        {promoRule
-                          ? `${promoRule.label} applied: -${formatPrice(discountAmount)}`
-                          : normalizedPromo
-                            ? "This code is not available in the UI demo."
-                            : "Enter a code to preview the discount instantly."}
-                      </p>
-                    </div>
-                  </div>
-                </div>
 
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    Payment method
-                  </p>
-                  <div className="mt-2 grid gap-3 sm:grid-cols-3">
-                    {METHODS.map((item) => {
-                      const active = method === item.id;
-                      return (
-                        <button
-                          key={item.id}
-                          type="button"
-                          onClick={() => setMethod(item.id)}
-                          className={`flex min-h-40 flex-col items-start gap-2 rounded-2xl border-2 p-4 text-left transition ${
-                            active
-                              ? "border-primary bg-primary/10"
-                              : "border-border bg-background hover:border-primary/40"
-                          }`}
-                        >
-                          <item.icon className="h-5 w-5 text-primary" />
-                          <p className="text-sm font-bold">{item.label}</p>
-                          <p className="text-xs text-muted-foreground">{item.sub}</p>
-                        </button>
-                      );
-                    })}
+                  <div className="rounded-2xl border border-dashed border-primary/20 bg-primary/10 p-4">
+                    <div className="flex items-center gap-2">
+                      <TicketPercent className="h-4 w-4 text-primary" />
+                      <p className="text-sm font-bold">Demo promo codes</p>
+                    </div>
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      `WELCOME10` saves 10k, `SUNNY15` saves 15k, `SHIPFREE` removes the shipping fee.
+                    </p>
+                    <p className="mt-2 text-xs font-semibold text-foreground/70">
+                      {promoRule
+                        ? `${promoRule.label} applied: -${formatPrice(discountAmount)}`
+                        : normalizedPromo
+                          ? "This code is not available in the UI demo."
+                          : "Enter a code to preview the discount instantly."}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -432,21 +391,20 @@ function CheckoutPage() {
                       label="Discount"
                       value={discountAmount > 0 ? `- ${formatPrice(discountAmount)}` : formatPrice(0)}
                     />
-                    <PriceRow label="Method" value={METHODS.find((item) => item.id === method)?.label ?? ""} />
+                  </div>
+
+                  <div className="mt-5 rounded-2xl bg-primary/10 p-4 text-sm">
+                    <p className="font-bold">What happens next</p>
+                    <p className="mt-1 text-muted-foreground">
+                      Continue will save this order first, then bring you to the payment page to choose
+                      `card`, `transfer`, or `cod`.
+                    </p>
                   </div>
 
                   <button
                     type="button"
-                    onClick={handlePayment}
-                    className="mt-5 w-full rounded-2xl bg-primary px-4 py-3 text-sm font-bold text-primary-foreground shadow-glow transition hover:brightness-95 active:scale-[0.98]"
-                  >
-                    Pay now · {formatPrice(grandTotal)}
-                  </button>
-
-                  <button
-                    type="button"
                     onClick={() => navigate({ to: "/menu" })}
-                    className="mt-3 w-full rounded-2xl border border-border bg-background px-4 py-3 text-sm font-bold transition hover:bg-accent"
+                    className="mt-4 w-full rounded-2xl border border-border bg-background px-4 py-3 text-sm font-bold transition hover:bg-accent"
                   >
                     Back to menu
                   </button>
@@ -455,6 +413,17 @@ function CheckoutPage() {
             </div>
           </Card>
         </motion.section>
+
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={handleContinue}
+            className="inline-flex items-center gap-2 rounded-2xl bg-primary px-8 py-3 text-sm font-bold text-primary-foreground shadow-glow transition hover:brightness-95 active:scale-[0.98]"
+          >
+            Continue
+            <ArrowRight className="h-4 w-4" />
+          </button>
+        </div>
       </div>
     </main>
   );

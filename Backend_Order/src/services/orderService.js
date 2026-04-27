@@ -2,7 +2,8 @@ const { pool } = require("../db");
 const { config } = require("../config");
 
 const VALID_STATUSES = ["PENDING_PAYMENT", "CONFIRMED", "DELIVERING", "DELIVERED", "CANCELLED"];
-const PAYMENT_METHODS = ["card", "ewallet", "cod"];
+const PAYMENT_METHODS = ["card", "transfer", "cod"];
+const ORDER_PAYMENT_METHODS = [...PAYMENT_METHODS, "pending"];
 const DEFAULT_SHIPPING_FEE = 25;
 
 function createError(status, message) {
@@ -72,7 +73,7 @@ function validateOrderInput(input) {
     }
   }
 
-  if (!PAYMENT_METHODS.includes(paymentMethod)) {
+  if (!ORDER_PAYMENT_METHODS.includes(paymentMethod)) {
     throw createError(400, "Invalid payment method");
   }
 }
@@ -339,6 +340,28 @@ exports.updateOrderStatus = async (orderId, status) => {
   } else {
     await pool.query("UPDATE orders SET status = 'PENDING', updated_at = NOW() WHERE id = $1::uuid", [orderId]);
   }
+
+  return exports.getOrderById(orderId);
+};
+
+exports.updatePaymentMethod = async (orderId, paymentMethod) => {
+  if (!ORDER_PAYMENT_METHODS.includes(paymentMethod)) {
+    throw createError(400, "Invalid payment method");
+  }
+
+  const current = await exports.getOrderById(orderId);
+  if (!current) {
+    return null;
+  }
+
+  if (current.status === "CANCELLED" || current.status === "DELIVERED") {
+    throw createError(409, "Order can no longer change payment method");
+  }
+
+  await pool.query(
+    "UPDATE orders SET payment_method = $2, updated_at = NOW() WHERE id = $1::uuid",
+    [orderId, paymentMethod],
+  );
 
   return exports.getOrderById(orderId);
 };

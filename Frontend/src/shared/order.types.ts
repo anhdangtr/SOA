@@ -7,7 +7,8 @@ export type OrderStatus =
   | "DELIVERED"
   | "CANCELLED";
 
-export type PaymentMethod = "card" | "ewallet" | "cod";
+export type PaymentMethod = "card" | "transfer" | "cod";
+export type OrderPaymentMethod = PaymentMethod | "pending";
 
 export type CartLine = {
   item: MenuItem;
@@ -27,7 +28,7 @@ export type CheckoutCustomerInput = {
 
 export type Payment = {
   orderId: string;
-  method: PaymentMethod;
+  method: OrderPaymentMethod;
   status: PaymentStatus;
   txnId?: string;
 };
@@ -65,7 +66,7 @@ export type Order = {
   discountAmount: number;
   promoCode?: string;
   total: number;
-  paymentMethod: PaymentMethod;
+  paymentMethod: OrderPaymentMethod;
   status: OrderStatus;
   payment?: Payment;
   delivery?: {

@@ -14,6 +14,7 @@ import { Route as ReviewcartRouteImport } from './routes/reviewcart'
 import { Route as MenuRouteImport } from './routes/menu'
 import { Route as CheckoutRouteImport } from './routes/checkout'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as PaymentOrderIdRouteImport } from './routes/payment.$orderId'
 import { Route as OrderOrderIdRouteImport } from './routes/order.$orderId'
 
 const TrackRoute = TrackRouteImport.update({
@@ -41,6 +42,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PaymentOrderIdRoute = PaymentOrderIdRouteImport.update({
+  id: '/payment/$orderId',
+  path: '/payment/$orderId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const OrderOrderIdRoute = OrderOrderIdRouteImport.update({
   id: '/order/$orderId',
   path: '/order/$orderId',
@@ -54,6 +60,7 @@ export interface FileRoutesByFullPath {
   '/reviewcart': typeof ReviewcartRoute
   '/track': typeof TrackRoute
   '/order/$orderId': typeof OrderOrderIdRoute
+  '/payment/$orderId': typeof PaymentOrderIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -62,6 +69,7 @@ export interface FileRoutesByTo {
   '/reviewcart': typeof ReviewcartRoute
   '/track': typeof TrackRoute
   '/order/$orderId': typeof OrderOrderIdRoute
+  '/payment/$orderId': typeof PaymentOrderIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -71,6 +79,7 @@ export interface FileRoutesById {
   '/reviewcart': typeof ReviewcartRoute
   '/track': typeof TrackRoute
   '/order/$orderId': typeof OrderOrderIdRoute
+  '/payment/$orderId': typeof PaymentOrderIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -81,8 +90,16 @@ export interface FileRouteTypes {
     | '/reviewcart'
     | '/track'
     | '/order/$orderId'
+    | '/payment/$orderId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/checkout' | '/menu' | '/reviewcart' | '/track' | '/order/$orderId'
+  to:
+    | '/'
+    | '/checkout'
+    | '/menu'
+    | '/reviewcart'
+    | '/track'
+    | '/order/$orderId'
+    | '/payment/$orderId'
   id:
     | '__root__'
     | '/'
@@ -91,6 +108,7 @@ export interface FileRouteTypes {
     | '/reviewcart'
     | '/track'
     | '/order/$orderId'
+    | '/payment/$orderId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -100,6 +118,7 @@ export interface RootRouteChildren {
   ReviewcartRoute: typeof ReviewcartRoute
   TrackRoute: typeof TrackRoute
   OrderOrderIdRoute: typeof OrderOrderIdRoute
+  PaymentOrderIdRoute: typeof PaymentOrderIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -139,6 +158,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/payment/$orderId': {
+      id: '/payment/$orderId'
+      path: '/payment/$orderId'
+      fullPath: '/payment/$orderId'
+      preLoaderRoute: typeof PaymentOrderIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/order/$orderId': {
       id: '/order/$orderId'
       path: '/order/$orderId'
@@ -156,6 +182,7 @@ const rootRouteChildren: RootRouteChildren = {
   ReviewcartRoute: ReviewcartRoute,
   TrackRoute: TrackRoute,
   OrderOrderIdRoute: OrderOrderIdRoute,
+  PaymentOrderIdRoute: PaymentOrderIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

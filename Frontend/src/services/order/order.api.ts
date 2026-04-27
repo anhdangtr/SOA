@@ -4,14 +4,14 @@ import type {
   CartLine,
   CheckoutCustomerInput,
   Order,
+  OrderPaymentMethod,
   OrderStatus,
-  PaymentMethod,
 } from "@/shared/order.types";
 
 export async function createOrder(input: {
   customer: CheckoutCustomerInput;
   lines: CartLine[];
-  paymentMethod: PaymentMethod;
+  paymentMethod: OrderPaymentMethod;
   shippingFee: number;
   promoCode?: string;
   discountAmount?: number;
@@ -44,5 +44,12 @@ export async function manualAdvance(orderId: string, target: OrderStatus) {
   await httpJson<void>(`${appConfig.orderServiceUrl}/orders/${orderId}/status`, {
     method: "PATCH",
     body: JSON.stringify({ status: target }),
+  });
+}
+
+export async function updatePaymentMethod(orderId: string, paymentMethod: OrderPaymentMethod) {
+  await httpJson<void>(`${appConfig.orderServiceUrl}/orders/${orderId}/payment-method`, {
+    method: "PATCH",
+    body: JSON.stringify({ paymentMethod }),
   });
 }

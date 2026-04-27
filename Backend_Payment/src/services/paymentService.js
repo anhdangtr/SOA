@@ -3,13 +3,13 @@ const { config } = require("../config");
 
 const CLIENT_TO_DB_METHOD = {
   card: "BANK_TRANSFER",
-  ewallet: "MOMO",
+  transfer: "MOMO",
   cod: "COD",
 };
 
 const DB_TO_CLIENT_METHOD = {
   BANK_TRANSFER: "card",
-  MOMO: "ewallet",
+  MOMO: "transfer",
   COD: "cod",
 };
 

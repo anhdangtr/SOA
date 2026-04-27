@@ -16,5 +16,6 @@ router.post("/orders", orderController.createOrder);
 router.get("/orders", orderController.listOrders);
 router.get("/orders/:orderId", orderController.getOrderById);
 router.patch("/orders/:orderId/status", orderController.updateOrderStatus);
+router.patch("/orders/:orderId/payment-method", orderController.updatePaymentMethod);
 
 module.exports = router;

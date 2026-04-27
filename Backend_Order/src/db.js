@@ -133,7 +133,7 @@ function normalizeLines(row) {
 }
 
 function normalizePaymentMethod(value) {
-  return ["card", "ewallet", "cod"].includes(value) ? value : "cod";
+  return ["card", "transfer", "cod", "pending"].includes(value) ? value : "pending";
 }
 
 function normalizeTotal(row) {

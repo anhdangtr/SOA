@@ -57,3 +57,21 @@ exports.updateOrderStatus = async (req, res, next) => {
     next(error);
   }
 };
+
+exports.updatePaymentMethod = async (req, res, next) => {
+  try {
+    const { paymentMethod } = req.body;
+    if (!paymentMethod) {
+      return res.status(400).json({ message: "Missing paymentMethod" });
+    }
+
+    const updated = await orderService.updatePaymentMethod(req.params.orderId, paymentMethod);
+    if (!updated) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    next(error);
+  }
+};
