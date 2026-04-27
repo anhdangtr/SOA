@@ -3,6 +3,7 @@ const { config } = require("../config");
 
 const VALID_STATUSES = ["PENDING_PAYMENT", "CONFIRMED", "DELIVERING", "DELIVERED", "CANCELLED"];
 const PAYMENT_METHODS = ["card", "ewallet", "cod"];
+const DEFAULT_SHIPPING_FEE = 25;
 
 function createError(status, message) {
   const error = new Error(message);
@@ -57,8 +58,8 @@ function validateOrderInput(input) {
 
   const { customer, lines, paymentMethod } = input;
 
-  if (!customer?.name || !customer?.phone || !customer?.address) {
-    throw createError(400, "Customer name, phone and address are required");
+  if (!customer?.name || !customer?.province || !customer?.ward || !customer?.houseNumber) {
+    throw createError(400, "Customer name, province, ward and house number are required");
   }
 
   if (!Array.isArray(lines) || lines.length === 0) {
@@ -74,6 +75,24 @@ function validateOrderInput(input) {
   if (!PAYMENT_METHODS.includes(paymentMethod)) {
     throw createError(400, "Invalid payment method");
   }
+}
+
+function sanitizeMoney(value, fallback = 0) {
+  const amount = Number(value);
+  return Number.isFinite(amount) && amount >= 0 ? amount : fallback;
+}
+
+function normalizePromoCode(value) {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const trimmed = value.trim().toUpperCase();
+  return trimmed ? trimmed : null;
+}
+
+function buildCustomerAddress(customer) {
+  return [customer.houseNumber, customer.ward, customer.province].filter(Boolean).join(", ");
 }
 
 function mapBaseStatus(status, delivery) {
@@ -156,9 +175,17 @@ function mapOrder(orderRow, payment, delivery) {
     customer: {
       name: orderRow.customer_name,
       phone: orderRow.customer_phone,
+      province: orderRow.customer_province,
+      ward: orderRow.customer_ward,
+      houseNumber: orderRow.customer_house_number,
       address: orderRow.customer_address,
+      note: orderRow.customer_note ?? undefined,
     },
     lines,
+    subtotal: Number(orderRow.subtotal_price ?? orderRow.total_price),
+    shippingFee: Number(orderRow.shipping_fee ?? 0),
+    discountAmount: Number(orderRow.discount_amount ?? 0),
+    promoCode: orderRow.promo_code ?? undefined,
     total: Number(orderRow.total_price),
     paymentMethod: orderRow.payment_method,
     status: mapBaseStatus(orderRow.status, delivery),
@@ -213,23 +240,44 @@ async function enrichOrder(orderRow) {
 exports.createOrder = async (input) => {
   validateOrderInput(input);
 
-  const total = sumTotal(input.lines);
+  const subtotal = sumTotal(input.lines);
+  const shippingFee = sanitizeMoney(input.shippingFee, DEFAULT_SHIPPING_FEE);
+  const discountAmount = Math.min(sanitizeMoney(input.discountAmount, 0), subtotal + shippingFee);
+  const total = Math.max(0, subtotal + shippingFee - discountAmount);
+  const promoCode = normalizePromoCode(input.promoCode);
+  const customerAddress = buildCustomerAddress(input.customer);
   const result = await pool.query(
     `INSERT INTO orders (
       customer_name,
       customer_phone,
+      customer_province,
+      customer_ward,
+      customer_house_number,
       customer_address,
+      customer_note,
+      subtotal_price,
+      shipping_fee,
+      discount_amount,
+      promo_code,
       total_price,
       payment_method,
       lines,
       status
     )
-    VALUES ($1, $2, $3, $4, $5, $6::jsonb, 'PENDING')
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14::jsonb, 'PENDING')
     RETURNING *`,
     [
       input.customer.name,
-      input.customer.phone,
-      input.customer.address,
+      input.customer.phone || "N/A",
+      input.customer.province,
+      input.customer.ward,
+      input.customer.houseNumber,
+      customerAddress,
+      input.customer.note?.trim() || null,
+      subtotal,
+      shippingFee,
+      discountAmount,
+      promoCode,
       total,
       input.paymentMethod,
       JSON.stringify(input.lines),

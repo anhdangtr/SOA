@@ -5,7 +5,7 @@ const footerLinks = [
   { label: "Home", to: "/" },
   { label: "Menu", to: "/menu" },
   { label: "Track Order", to: "/track" },
-  { label: "Checkout", to: "/checkout" },
+  { label: "Review Cart", to: "/reviewcart" },
 ];
 
 export function SiteFooter() {

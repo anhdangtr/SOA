@@ -1,11 +1,20 @@
 import { appConfig } from "@/shared/config";
 import { httpJson } from "@/shared/http";
-import type { CartLine, Order, OrderStatus, PaymentMethod } from "@/shared/order.types";
+import type {
+  CartLine,
+  CheckoutCustomerInput,
+  Order,
+  OrderStatus,
+  PaymentMethod,
+} from "@/shared/order.types";
 
 export async function createOrder(input: {
-  customer: Order["customer"];
+  customer: CheckoutCustomerInput;
   lines: CartLine[];
   paymentMethod: PaymentMethod;
+  shippingFee: number;
+  promoCode?: string;
+  discountAmount?: number;
 }) {
   return httpJson<Order>(`${appConfig.orderServiceUrl}/orders`, {
     method: "POST",

@@ -92,11 +92,26 @@ function normalizeStatus(value) {
 
 function normalizeCustomer(row) {
   const customer = row.customer && typeof row.customer === "object" ? row.customer : {};
+  const province = row.customer_province ?? customer.province ?? "Ho Chi Minh City";
+  const ward = row.customer_ward ?? customer.ward ?? "Central Ward";
+  const houseNumber =
+    row.customer_house_number ??
+    customer.houseNumber ??
+    row.customer_address ??
+    customer.address ??
+    "Address pending confirmation";
 
   return {
     name: row.customer_name ?? customer.name ?? "Unknown Customer",
     phone: row.customer_phone ?? customer.phone ?? "N/A",
-    address: row.customer_address ?? customer.address ?? "Address pending confirmation",
+    province,
+    ward,
+    houseNumber,
+    note: row.customer_note ?? customer.note ?? null,
+    address:
+      row.customer_address ??
+      customer.address ??
+      `${houseNumber}, ${ward}, ${province}`,
   };
 }
 
@@ -123,6 +138,21 @@ function normalizePaymentMethod(value) {
 
 function normalizeTotal(row) {
   const value = row.total_price ?? row.total ?? 0;
+  return Number(value) || 0;
+}
+
+function normalizeSubtotal(row) {
+  const value = row.subtotal_price ?? row.total_price ?? row.total ?? 0;
+  return Number(value) || 0;
+}
+
+function normalizeShippingFee(row) {
+  const value = row.shipping_fee ?? 0;
+  return Number(value) || 0;
+}
+
+function normalizeDiscountAmount(row) {
+  const value = row.discount_amount ?? 0;
   return Number(value) || 0;
 }
 
@@ -169,7 +199,15 @@ async function migrateOrdersTable() {
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       customer_name VARCHAR(255) NOT NULL,
       customer_phone VARCHAR(50) NOT NULL,
+      customer_province VARCHAR(120) NOT NULL,
+      customer_ward VARCHAR(120) NOT NULL,
+      customer_house_number TEXT NOT NULL,
       customer_address TEXT NOT NULL,
+      customer_note TEXT,
+      subtotal_price NUMERIC(12, 2) NOT NULL CHECK (subtotal_price >= 0),
+      shipping_fee NUMERIC(12, 2) NOT NULL DEFAULT 0 CHECK (shipping_fee >= 0),
+      discount_amount NUMERIC(12, 2) NOT NULL DEFAULT 0 CHECK (discount_amount >= 0),
+      promo_code VARCHAR(50),
       total_price NUMERIC(12, 2) NOT NULL CHECK (total_price >= 0),
       payment_method VARCHAR(30) NOT NULL,
       lines JSONB NOT NULL DEFAULT '[]'::jsonb,
@@ -186,7 +224,15 @@ async function migrateOrdersTable() {
         id,
         customer_name,
         customer_phone,
+        customer_province,
+        customer_ward,
+        customer_house_number,
         customer_address,
+        customer_note,
+        subtotal_price,
+        shipping_fee,
+        discount_amount,
+        promo_code,
         total_price,
         payment_method,
         lines,
@@ -194,12 +240,39 @@ async function migrateOrdersTable() {
         created_at,
         updated_at
       )
-      VALUES (COALESCE($1::uuid, gen_random_uuid()), $2, $3, $4, $5, $6, $7::jsonb, $8, $9, $10)`,
+      VALUES (
+        COALESCE($1::uuid, gen_random_uuid()),
+        $2,
+        $3,
+        $4,
+        $5,
+        $6,
+        $7,
+        $8,
+        $9,
+        $10,
+        $11,
+        $12,
+        $13,
+        $14,
+        $15::jsonb,
+        $16,
+        $17,
+        $18
+      )`,
       [
         isUuid(row.id) ? row.id : undefined,
         customer.name,
         customer.phone,
+        customer.province,
+        customer.ward,
+        customer.houseNumber,
         customer.address,
+        customer.note,
+        normalizeSubtotal(row),
+        normalizeShippingFee(row),
+        normalizeDiscountAmount(row),
+        row.promo_code ?? null,
         normalizeTotal(row),
         normalizePaymentMethod(row.payment_method),
         JSON.stringify(normalizeLines(row)),

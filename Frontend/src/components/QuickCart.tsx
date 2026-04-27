@@ -143,7 +143,7 @@ export function QuickCart() {
             <span className="text-base font-bold">{total}k</span>
           </div>
           <Link
-            to="/checkout"
+            to="/reviewcart"
             onClick={onCheckout}
             className={`flex w-full items-center justify-center rounded-xl px-4 py-3 text-sm font-bold transition ${
               count === 0
@@ -151,7 +151,7 @@ export function QuickCart() {
                 : "bg-primary text-primary-foreground shadow-glow hover:brightness-95"
             }`}
           >
-            Checkout →
+            Review Cart →
           </Link>
         </footer>
       </div>

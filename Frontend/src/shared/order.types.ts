@@ -16,6 +16,15 @@ export type CartLine = {
 
 export type PaymentStatus = "PENDING" | "SUCCESS" | "FAILED";
 
+export type CheckoutCustomerInput = {
+  name: string;
+  phone?: string;
+  province: string;
+  ward: string;
+  houseNumber: string;
+  note?: string;
+};
+
 export type Payment = {
   orderId: string;
   method: PaymentMethod;
@@ -44,9 +53,17 @@ export type Order = {
   customer: {
     name: string;
     phone: string;
+    province: string;
+    ward: string;
+    houseNumber: string;
     address: string;
+    note?: string;
   };
   lines: CartLine[];
+  subtotal: number;
+  shippingFee: number;
+  discountAmount: number;
+  promoCode?: string;
   total: number;
   paymentMethod: PaymentMethod;
   status: OrderStatus;

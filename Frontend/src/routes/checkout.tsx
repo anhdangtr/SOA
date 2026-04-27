@@ -1,19 +1,26 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import {
   CheckCircle2,
   CreditCard,
   Loader2,
-  Minus,
-  Plus,
+  MapPinned,
   ShoppingBag,
   Smartphone,
+  TicketPercent,
   Wallet,
-  XCircle,
 } from "lucide-react";
 import { toast } from "sonner";
-import { cart, cartTotals, useCart } from "@/lib/cart";
+import {
+  cart,
+  cartTotals,
+  cartTotalsFromLines,
+  formatPrice,
+  reviewCartSelectedLines,
+  reviewCartSelection,
+  useCart,
+} from "@/lib/cart";
 import { triggerDelivery } from "@/services/delivery/delivery.api";
 import { createOrder } from "@/services/order/order.api";
 import { processPayment } from "@/services/payment/payment.api";
@@ -23,11 +30,85 @@ export const Route = createFileRoute("/checkout")({
   head: () => ({
     meta: [
       { title: "Checkout - Chau Ngoc Thao" },
-      { name: "description", content: "Review your cart, choose payment, and place your order." },
+      { name: "description", content: "Review your order and complete payment." },
     ],
   }),
   component: CheckoutPage,
 });
+
+const SHIPPING_FEE = 25;
+
+const PROVINCES = [
+  "An Giang",
+  "Ba Ria - Vung Tau",
+  "Bac Giang",
+  "Bac Kan",
+  "Bac Lieu",
+  "Bac Ninh",
+  "Ben Tre",
+  "Binh Duong",
+  "Binh Dinh",
+  "Binh Phuoc",
+  "Binh Thuan",
+  "Ca Mau",
+  "Can Tho",
+  "Cao Bang",
+  "Da Nang",
+  "Dak Lak",
+  "Dak Nong",
+  "Dien Bien",
+  "Dong Nai",
+  "Dong Thap",
+  "Gia Lai",
+  "Ha Giang",
+  "Ha Nam",
+  "Ha Noi",
+  "Ha Tinh",
+  "Hai Duong",
+  "Hai Phong",
+  "Hau Giang",
+  "Hoa Binh",
+  "Hung Yen",
+  "Khanh Hoa",
+  "Kien Giang",
+  "Kon Tum",
+  "Lai Chau",
+  "Lam Dong",
+  "Lang Son",
+  "Lao Cai",
+  "Long An",
+  "Nam Dinh",
+  "Nghe An",
+  "Ninh Binh",
+  "Ninh Thuan",
+  "Phu Tho",
+  "Phu Yen",
+  "Quang Binh",
+  "Quang Nam",
+  "Quang Ngai",
+  "Quang Ninh",
+  "Quang Tri",
+  "Soc Trang",
+  "Son La",
+  "Tay Ninh",
+  "Thai Binh",
+  "Thai Nguyen",
+  "Thanh Hoa",
+  "Thua Thien Hue",
+  "Tien Giang",
+  "Ho Chi Minh City",
+  "Tra Vinh",
+  "Tuyen Quang",
+  "Vinh Long",
+  "Vinh Phuc",
+  "Yen Bai",
+];
+
+const PROMO_RULES: Record<string, { label: string; discount: number }> = {
+  WELCOME10: { label: "Welcome discount", discount: 10 },
+  SUNNY15: { label: "Sunshine combo", discount: 15 },
+  SHIPFREE: { label: "Free shipping", discount: SHIPPING_FEE },
+};
 
 const METHODS: {
   id: PaymentMethod;
@@ -36,27 +117,44 @@ const METHODS: {
   sub: string;
 }[] = [
   { id: "card", label: "Credit Card", icon: CreditCard, sub: "Visa / Master / JCB" },
-  { id: "ewallet", label: "E-Wallet", icon: Smartphone, sub: "MoMo / ZaloPay / ApplePay" },
-  { id: "cod", label: "Cash on Delivery", icon: Wallet, sub: "Pay courier on arrival" },
+  { id: "ewallet", label: "E-Wallet", icon: Smartphone, sub: "MoMo / ZaloPay" },
+  { id: "cod", label: "Cash on Delivery", icon: Wallet, sub: "Pay when your order arrives" },
 ];
 
 function CheckoutPage() {
   const cartState = useCart();
-  const { lines, count, total } = cartTotals(cartState);
+  const reviewCartLines = reviewCartSelectedLines(cartState);
+  const { count: cartCount } = cartTotals(cartState);
+  const { lines, count, total } = cartTotalsFromLines(reviewCartLines);
   const navigate = useNavigate();
 
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [address, setAddress] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [province, setProvince] = useState(PROVINCES[57]);
+  const [ward, setWard] = useState("");
+  const [houseNumber, setHouseNumber] = useState("");
+  const [note, setNote] = useState("");
+  const [promoCode, setPromoCode] = useState("");
   const [method, setMethod] = useState<PaymentMethod>("card");
   const [processing, setProcessing] = useState(false);
 
-  if (count === 0 && !processing) {
+  const wardOptions = buildWardOptions(province);
+  const normalizedPromo = promoCode.trim().toUpperCase();
+  const promoRule = PROMO_RULES[normalizedPromo];
+  const discountAmount = promoRule?.discount ?? 0;
+  const grandTotal = Math.max(0, total + SHIPPING_FEE - discountAmount);
+
+  useEffect(() => {
+    if (!wardOptions.includes(ward)) {
+      setWard(wardOptions[0]);
+    }
+  }, [province, ward, wardOptions]);
+
+  if (cartCount === 0 && !processing) {
     return (
       <main className="mx-auto max-w-3xl px-5 py-20 text-center">
         <ShoppingBag className="mx-auto h-12 w-12 text-muted-foreground" />
         <h1 className="mt-4 text-3xl font-extrabold">Your cart is empty</h1>
-        <p className="mt-2 text-muted-foreground">Add some items before checking out.</p>
+        <p className="mt-2 text-muted-foreground">Add a few favorites before heading to checkout.</p>
         <button
           onClick={() => navigate({ to: "/menu" })}
           className="mt-6 rounded-2xl bg-primary px-6 py-3 text-sm font-bold text-primary-foreground shadow-glow"
@@ -67,28 +165,53 @@ function CheckoutPage() {
     );
   }
 
-  const handlePayment = async (outcome: "SUCCESS" | "FAILED") => {
-    if (!name || !phone || !address) {
-      toast.error("Please fill in delivery details first.");
+  if (count === 0 && !processing) {
+    return (
+      <main className="mx-auto max-w-3xl px-5 py-20 text-center">
+        <ShoppingBag className="mx-auto h-12 w-12 text-muted-foreground" />
+        <h1 className="mt-4 text-3xl font-extrabold">No items selected yet</h1>
+        <p className="mt-2 text-muted-foreground">
+          Choose the products you want to pay for in Review Cart before continuing to checkout.
+        </p>
+        <button
+          onClick={() => navigate({ to: "/reviewcart" })}
+          className="mt-6 rounded-2xl bg-primary px-6 py-3 text-sm font-bold text-primary-foreground shadow-glow"
+        >
+          Go to Review Cart
+        </button>
+      </main>
+    );
+  }
+
+  const handlePayment = async () => {
+    if (!fullName || !province || !ward || !houseNumber) {
+      toast.error("Please complete all required customer details.");
       return;
     }
 
     try {
       setProcessing(true);
       const order = await createOrder({
-        customer: { name, phone, address },
+        customer: {
+          name: fullName,
+          province,
+          ward,
+          houseNumber,
+          note: note.trim() || undefined,
+        },
         lines,
         paymentMethod: method,
+        shippingFee: SHIPPING_FEE,
+        promoCode: normalizedPromo || undefined,
+        discountAmount,
       });
 
-      const payment = await processPayment(order.id, outcome, method);
-      cart.clear();
+      const payment = await processPayment(order.id, "SUCCESS", method);
+      cart.removeMany(reviewCartSelection.getSelectedIds());
 
       if (payment.status === "SUCCESS") {
-        await triggerDelivery(order.id, address);
-        toast.success("Payment successful. Preparing your order.");
-      } else {
-        toast.error("Payment failed. Order cancelled.");
+        await triggerDelivery(order.id, order.customer.address);
+        toast.success("Payment successful. Your order is now being prepared.");
       }
 
       navigate({ to: "/order/$orderId", params: { orderId: order.id } });
@@ -103,153 +226,268 @@ function CheckoutPage() {
     return (
       <main className="mx-auto mt-32 flex max-w-md flex-col items-center gap-4 px-5 text-center">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
-        <p className="text-lg font-bold">Contacting Payment Service...</p>
-        <p className="text-sm text-muted-foreground">Hang tight, we are confirming your order.</p>
+        <p className="text-lg font-bold">Processing your payment...</p>
+        <p className="text-sm text-muted-foreground">
+          We are saving your order details and contacting the payment service.
+        </p>
       </main>
     );
   }
 
   return (
-    <main className="mx-auto max-w-6xl px-5 py-10">
+    <main className="mx-auto max-w-6xl px-5 py-10 pb-16">
       <header className="mb-8">
         <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">Checkout</p>
-        <h1 className="mt-1 text-4xl font-extrabold">Almost there</h1>
+        <h1 className="mt-1 text-4xl font-extrabold">Complete your payment</h1>
+        <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
+          Review your items, confirm the delivery details, and pay in one smooth step.
+        </p>
       </header>
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_380px]">
-        <motion.section
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="space-y-6"
-        >
-          <Card title="Delivery Details" step="1">
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Field label="Full name" value={name} onChange={setName} placeholder="Nguyen Van A" />
-              <Field label="Phone" value={phone} onChange={setPhone} placeholder="+84 ..." />
-              <div className="sm:col-span-2">
-                <Field
-                  label="Delivery address"
-                  value={address}
-                  onChange={setAddress}
-                  placeholder="123 Le Loi, Q.1, HCMC"
-                />
-              </div>
-            </div>
-          </Card>
-
-          <Card title="Payment Method" step="2">
-            <div className="grid gap-3 sm:grid-cols-3">
-              {METHODS.map((m) => {
-                const active = method === m.id;
-                return (
-                  <button
-                    key={m.id}
-                    onClick={() => setMethod(m.id)}
-                    className={`flex min-h-40 flex-col items-start gap-2 rounded-xl border-2 p-4 text-left transition ${
-                      active
-                        ? "border-primary bg-primary/10"
-                        : "border-border bg-background hover:border-primary/40"
-                    }`}
+      <div className="space-y-6">
+        <motion.section initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+          <Card
+            badge="Part 1"
+            title="Order summary"
+            description="Your products, quantity, shipping fee, and final amount stay visible at the top."
+          >
+            <div className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
+              <div className="space-y-3">
+                {lines.map((line) => (
+                  <div
+                    key={line.item.id}
+                    className="flex items-center gap-3 rounded-2xl border border-border bg-background p-3"
                   >
-                    <m.icon className="h-5 w-5 text-primary" />
-                    <p className="text-sm font-bold">{m.label}</p>
-                    <p className="text-xs text-muted-foreground">{m.sub}</p>
-                  </button>
-                );
-              })}
-            </div>
-          </Card>
+                    <img
+                      src={line.item.image}
+                      alt={line.item.name}
+                      className="h-16 w-16 rounded-xl object-cover"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="line-clamp-1 text-sm font-bold">{line.item.name}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Quantity: {line.qty} · Unit price: {formatPrice(line.item.price)}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        Line total
+                      </p>
+                      <p className="text-sm font-bold">{formatPrice(line.qty * line.item.price)}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
 
-          <Card title="Payment Simulation" step="3">
-            <p className="mb-4 text-sm text-muted-foreground">
-              Trigger the Payment Service response to demo the microservice flow.
-            </p>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <button
-                onClick={() => handlePayment("SUCCESS")}
-                className="group flex min-h-40 flex-col items-start gap-2 rounded-xl border-2 border-success/40 bg-success/10 p-5 text-left transition hover:border-success"
-              >
-                <CheckCircle2 className="h-6 w-6 text-success" />
-                <p className="font-bold">Place Order - Success</p>
-                <p className="text-xs text-muted-foreground">Triggers Order to Delivery flow.</p>
-              </button>
-              <button
-                onClick={() => handlePayment("FAILED")}
-                className="group flex min-h-40 flex-col items-start gap-2 rounded-xl border-2 border-destructive/40 bg-destructive/10 p-5 text-left transition hover:border-destructive"
-              >
-                <XCircle className="h-6 w-6 text-destructive" />
-                <p className="font-bold">Place Order - Failure</p>
-                <p className="text-xs text-muted-foreground">Cancels order. No delivery.</p>
-              </button>
+              <div className="rounded-3xl bg-gradient-soft p-5">
+                <div className="rounded-2xl border border-primary/20 bg-card p-5 shadow-card">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="h-5 w-5 text-primary" />
+                    <p className="text-sm font-bold">Payment snapshot</p>
+                  </div>
+                  <div className="mt-5 space-y-3 text-sm">
+                    <PriceRow label="Items" value={`${count} products`} />
+                    <PriceRow label="Subtotal" value={formatPrice(total)} />
+                    <PriceRow label="Shipping fee" value={formatPrice(SHIPPING_FEE)} />
+                    <PriceRow
+                      label="Promo discount"
+                      value={discountAmount > 0 ? `- ${formatPrice(discountAmount)}` : formatPrice(0)}
+                    />
+                  </div>
+                  <div className="mt-4 rounded-2xl bg-primary/15 p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                          Total payment
+                        </p>
+                        <p className="mt-1 text-3xl font-extrabold">{formatPrice(grandTotal)}</p>
+                      </div>
+                      <ShoppingBag className="h-10 w-10 text-primary" />
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </Card>
         </motion.section>
 
-        <aside className="h-fit lg:sticky lg:top-20">
-          <div className="rounded-2xl border border-border bg-card p-5 shadow-card">
-            <h3 className="text-sm font-bold uppercase tracking-wide text-muted-foreground">
-              Your order
-            </h3>
-            <ul className="mt-4 max-h-[280px] space-y-3 overflow-y-auto pr-1">
-              {lines.map((l) => (
-                <li key={l.item.id} className="flex items-center gap-3">
-                  <img
-                    src={l.item.image}
-                    alt={l.item.name}
-                    className="h-12 w-12 rounded-lg object-cover"
+        <motion.section
+          initial={{ opacity: 0, y: 14 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.05 }}
+        >
+          <Card
+            badge="Part 2"
+            title="Customer information"
+            description="All checkout details are entered here and saved when the customer clicks Pay now."
+          >
+            <div className="grid gap-6 lg:grid-cols-[1fr_380px]">
+              <div className="space-y-6">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <Field
+                    label="Full name"
+                    value={fullName}
+                    onChange={setFullName}
+                    placeholder="Nguyen Van A"
                   />
-                  <div className="flex-1">
-                    <p className="line-clamp-1 text-sm font-semibold">{l.item.name}</p>
-                    <p className="text-xs text-muted-foreground">{l.item.price}k</p>
+                  <SelectField
+                    label="Province / City"
+                    value={province}
+                    options={PROVINCES}
+                    onChange={(value) => setProvince(value)}
+                  />
+                  <SelectField
+                    label="Ward / Commune"
+                    value={ward}
+                    options={wardOptions}
+                    onChange={setWard}
+                  />
+                  <Field
+                    label="House number"
+                    value={houseNumber}
+                    onChange={setHouseNumber}
+                    placeholder="12B Le Loi Street"
+                  />
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <TextAreaField
+                    label="Additional request"
+                    value={note}
+                    onChange={setNote}
+                    placeholder="Less spicy, call before arrival, leave at reception..."
+                  />
+                  <div className="space-y-3">
+                    <Field
+                      label="Promo code"
+                      value={promoCode}
+                      onChange={setPromoCode}
+                      placeholder="WELCOME10"
+                    />
+                    <div className="rounded-2xl border border-dashed border-primary/20 bg-primary/10 p-4">
+                      <div className="flex items-center gap-2">
+                        <TicketPercent className="h-4 w-4 text-primary" />
+                        <p className="text-sm font-bold">Demo promo codes</p>
+                      </div>
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        `WELCOME10` saves 10k, `SUNNY15` saves 15k, `SHIPFREE` removes the shipping fee.
+                      </p>
+                      <p className="mt-2 text-xs font-semibold text-foreground/70">
+                        {promoRule
+                          ? `${promoRule.label} applied: -${formatPrice(discountAmount)}`
+                          : normalizedPromo
+                            ? "This code is not available in the UI demo."
+                            : "Enter a code to preview the discount instantly."}
+                      </p>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1 rounded-full border border-border bg-background p-0.5">
-                    <button
-                      onClick={() => cart.remove(l.item.id)}
-                      className="flex h-6 w-6 items-center justify-center rounded-full hover:bg-accent"
-                    >
-                      <Minus className="h-3 w-3" />
-                    </button>
-                    <span className="w-5 text-center text-xs font-bold">{l.qty}</span>
-                    <button
-                      onClick={() => cart.add(l.item)}
-                      className="flex h-6 w-6 items-center justify-center rounded-full hover:bg-accent"
-                    >
-                      <Plus className="h-3 w-3" />
-                    </button>
+                </div>
+
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Payment method
+                  </p>
+                  <div className="mt-2 grid gap-3 sm:grid-cols-3">
+                    {METHODS.map((item) => {
+                      const active = method === item.id;
+                      return (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => setMethod(item.id)}
+                          className={`flex min-h-40 flex-col items-start gap-2 rounded-2xl border-2 p-4 text-left transition ${
+                            active
+                              ? "border-primary bg-primary/10"
+                              : "border-border bg-background hover:border-primary/40"
+                          }`}
+                        >
+                          <item.icon className="h-5 w-5 text-primary" />
+                          <p className="text-sm font-bold">{item.label}</p>
+                          <p className="text-xs text-muted-foreground">{item.sub}</p>
+                        </button>
+                      );
+                    })}
                   </div>
-                </li>
-              ))}
-            </ul>
-            <div className="mt-4 space-y-2 border-t border-border pt-4 text-sm">
-              <Row label="Subtotal" value={`${total}k`} />
-              <Row label="Delivery" value="Free" />
-              <Row label="Total" value={`${total}k`} bold />
+                </div>
+              </div>
+
+              <aside className="h-fit rounded-3xl bg-gradient-soft p-5">
+                <div className="rounded-2xl border border-border bg-card p-5 shadow-card">
+                  <div className="flex items-start gap-3">
+                    <span className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/15 text-primary">
+                      <MapPinned className="h-5 w-5" />
+                    </span>
+                    <div>
+                      <p className="text-sm font-bold">Delivery destination</p>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        {[houseNumber, ward, province].filter(Boolean).join(", ") || "Choose an address"}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-5 space-y-2 border-t border-border pt-4 text-sm">
+                    <PriceRow label="Subtotal" value={formatPrice(total)} />
+                    <PriceRow label="Shipping" value={formatPrice(SHIPPING_FEE)} />
+                    <PriceRow
+                      label="Discount"
+                      value={discountAmount > 0 ? `- ${formatPrice(discountAmount)}` : formatPrice(0)}
+                    />
+                    <PriceRow label="Method" value={METHODS.find((item) => item.id === method)?.label ?? ""} />
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handlePayment}
+                    className="mt-5 w-full rounded-2xl bg-primary px-4 py-3 text-sm font-bold text-primary-foreground shadow-glow transition hover:brightness-95 active:scale-[0.98]"
+                  >
+                    Pay now · {formatPrice(grandTotal)}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => navigate({ to: "/menu" })}
+                    className="mt-3 w-full rounded-2xl border border-border bg-background px-4 py-3 text-sm font-bold transition hover:bg-accent"
+                  >
+                    Back to menu
+                  </button>
+                </div>
+              </aside>
             </div>
-          </div>
-        </aside>
+          </Card>
+        </motion.section>
       </div>
     </main>
   );
 }
 
+function buildWardOptions(province: string) {
+  return [
+    `${province} Central Ward`,
+    `${province} Riverside Ward`,
+    `${province} Market Quarter`,
+    `${province} Garden Commune`,
+  ];
+}
+
 function Card({
+  badge,
   title,
-  step,
+  description,
   children,
 }: {
+  badge: string;
   title: string;
-  step: string;
+  description: string;
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-2xl border border-border bg-card p-6 shadow-card">
-      <header className="mb-4 flex items-center gap-3">
-        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
-          {step}
-        </span>
-        <h2 className="text-lg font-bold">{title}</h2>
-      </header>
-      {children}
+    <section className="overflow-hidden rounded-3xl border border-border bg-card shadow-card">
+      <div className="bg-gradient-sun p-6">
+        <p className="text-xs font-bold uppercase tracking-[0.2em] text-foreground/60">{badge}</p>
+        <h2 className="mt-2 text-3xl font-extrabold text-foreground">{title}</h2>
+        <p className="mt-2 max-w-3xl text-sm text-foreground/80">{description}</p>
+      </div>
+      <div className="p-6">{children}</div>
     </section>
   );
 }
@@ -262,7 +500,7 @@ function Field({
 }: {
   label: string;
   value: string;
-  onChange: (v: string) => void;
+  onChange: (value: string) => void;
   placeholder?: string;
 }) {
   return (
@@ -272,7 +510,7 @@ function Field({
       </span>
       <input
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
         className="mt-1 w-full rounded-xl border border-input bg-background px-4 py-2.5 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/30"
       />
@@ -280,11 +518,68 @@ function Field({
   );
 }
 
-function Row({ label, value, bold }: { label: string; value: string; bold?: boolean }) {
+function TextAreaField({
+  label,
+  value,
+  onChange,
+  placeholder,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+}) {
   return (
-    <div className={`flex items-center justify-between ${bold ? "text-base font-extrabold" : ""}`}>
-      <span className={bold ? "" : "text-muted-foreground"}>{label}</span>
-      <span>{value}</span>
+    <label className="block">
+      <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        {label}
+      </span>
+      <textarea
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={placeholder}
+        className="mt-1 min-h-[114px] w-full rounded-xl border border-input bg-background px-4 py-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/30"
+      />
+    </label>
+  );
+}
+
+function SelectField({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  options: string[];
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className="block">
+      <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        {label}
+      </span>
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="mt-1 w-full rounded-xl border border-input bg-background px-4 py-2.5 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/30"
+      >
+        {options.map((option) => (
+          <option key={option} value={option}>
+            {option}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+function PriceRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <span className="text-muted-foreground">{label}</span>
+      <span className="text-right font-semibold">{value}</span>
     </div>
   );
 }
