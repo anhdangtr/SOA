@@ -1,0 +1,175 @@
+@import "tailwindcss" source("../src");
+@import "tw-animate-css";
+
+/* Fallback while Tailwind source detection is not picking up TSX utility classes in this workspace. */
+@source inline("-inset-6 -left-16 -left-20 -mt-2.5 -right-20 -right-32 -top-40 -translate-x-1/2 -translate-y-1/2 absolute active:scale-[0.98] animate-spin aspect-[4/3] aspect-[5/4] backdrop-blur bg-background bg-background/80 bg-card bg-clip-text bg-destructive/10 bg-foreground bg-foreground/10 bg-foreground/40 bg-foreground/88 bg-gradient-soft bg-gradient-sun bg-gradient-to-r bg-muted bg-primary bg-primary/15 bg-primary/20 bg-primary/30 bg-success/10 block blur-2xl blur-3xl border border-2 border-4 border-b border-background/10 border-border border-border/60 border-border/70 border-dashed border-destructive/30 border-destructive/40 border-foreground/10 border-input border-primary/20 border-success/40 border-t border-white border-white/35 bottom-0 bottom-4 bottom-5 divide-border divide-y duration-300 duration-500 fixed flex flex-1 flex-col flex-wrap focus:border-primary focus:ring-2 focus:ring-primary/30 font-black font-bold font-brand font-extrabold font-medium font-mono font-semibold from-primary/12 gap-1 gap-1.5 gap-10 gap-2 gap-3 gap-4 gap-5 gap-6 gap-7 gap-8 gap-x-6 gap-y-2 grid grid-cols-2 grid-cols-3 group group-hover:scale-105 group-hover:scale-110 h-10 h-11 h-12 h-14 h-16 h-2 h-3 h-3.5 h-4 h-40 h-48 h-5 h-6 h-7 h-8 h-9 h-[300px] h-[480px] h-[calc(100vh-6rem)] h-fit h-full h-px hidden hover:-translate-y-1 hover:bg-accent hover:bg-destructive/10 hover:bg-primary/90 hover:border-destructive hover:border-primary hover:border-success hover:brightness-95 hover:scale-105 hover:shadow-glow hover:text-destructive hover:text-foreground hover:underline inline-flex inset-0 inset-x-0 inset-y-0 items-baseline items-center items-end items-start justify-between justify-center leading-7 leading-8 leading-[0.98] leading-[1.25] leading-none leading-normal leading-tight left-0 left-1/2 left-3 left-4");
+@source inline("lg:block lg:flex-row lg:gap-10 lg:grid-cols-3 lg:grid-cols-[1.05fr_0.95fr] lg:grid-cols-[1fr_380px] lg:hidden lg:max-w-[500px] lg:py-10 lg:sticky lg:text-[5.25rem] lg:top-20 lg:w-[320px] line-clamp-1 line-clamp-2 line-through max-h-40 max-h-[280px] max-w-3xl max-w-4xl max-w-6xl max-w-7xl max-w-[440px] max-w-md max-w-sm max-w-xl mb-2 mb-3 mb-4 mb-5 mb-6 mb-8 md:flex md:grid-cols-5 md:grid-cols-[1.2fr_0.8fr_0.9fr] md:h-5 md:inline md:p-3.5 md:py-10 md:text-3xl md:text-4xl md:text-6xl md:text-base md:text-lg md:w-5 min-h-40 min-h-8 min-h-[114px] min-h-[58px] min-h-[calc(100svh-4rem)] min-h-screen min-w-0 ml-1 mt-0.5 mt-1 mt-1.5 mt-10 mt-2 mt-20 mt-3 mt-32 mt-4 mt-6 mt-8 mx-auto object-contain object-cover opacity-20 opacity-50 opacity-70 opacity-90 outline-none overflow-auto overflow-hidden overflow-y-auto p-0.5 p-10 p-2 p-3 p-4 p-5 p-6 pb-0.5 pb-1 pb-10 pb-3 pb-40 pl-11 pointer-events-none pr-1 pr-4 pt-16 pt-3 pt-4 pt-6 px-2 px-3 px-4 px-5 px-6 py-0.5 py-1 py-1.5 py-10 py-14 py-16 py-2 py-2.5 py-20 py-3 py-5 py-8 relative right-0 right-5 rounded-2xl rounded-3xl rounded-[2.5rem] rounded-full rounded-lg rounded-md rounded-xl scale-[2.6] shadow-card shadow-glow shadow-sm shrink-0 sm:col-span-2 sm:flex-row sm:grid-cols-2 sm:grid-cols-3 sm:grid-cols-4 sm:items-center sm:justify-between sm:text-2xl sm:text-5xl space-y-2 space-y-3 space-y-4 space-y-6 sticky");
+@source inline("text-2xl text-3xl text-4xl text-[0.9rem] text-[1.65rem] text-[10px] text-[11px] text-[8px] text-background text-background/60 text-base text-bubble-food text-center text-destructive text-foreground text-foreground/60 text-foreground/70 text-foreground/80 text-left text-lg text-muted-foreground text-primary text-primary-foreground text-right text-sm text-success text-transparent text-xl text-xs to-background toaster top-0 top-1/2 top-10 top-20 top-3 tracking-[0.03em] tracking-[0.08em] tracking-[0.12em] tracking-[0.14em] tracking-[0.16em] tracking-[0.2em] tracking-tight tracking-wide tracking-wider transition transition-all transition-colors uppercase via-background w-10 w-11 w-12 w-14 w-16 w-2 w-3 w-3.5 w-4 w-40 w-48 w-5 w-6 w-7 w-8 w-9 w-[300px] w-[340px] w-[480px] w-[min(96vw,720px)] w-full z-40 z-50");
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-ring-offset-background: var(--background);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --font-display: "Inter", "Plus Jakarta Sans", system-ui, sans-serif;
+  --font-brand: "Baloo 2", "Plus Jakarta Sans", system-ui, sans-serif;
+}
+
+:root {
+  --radius: 0.875rem;
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.18 0.01 250);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.18 0.01 250);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.18 0.01 250);
+  --primary: oklch(0.88 0.185 95);
+  --primary-foreground: oklch(0.16 0.01 250);
+  --secondary: oklch(0.97 0.005 250);
+  --secondary-foreground: oklch(0.18 0.01 250);
+  --muted: oklch(0.97 0.005 250);
+  --muted-foreground: oklch(0.5 0.01 250);
+  --accent: oklch(0.96 0.05 95);
+  --accent-foreground: oklch(0.18 0.01 250);
+  --destructive: oklch(0.62 0.23 25);
+  --destructive-foreground: oklch(0.99 0 0);
+  --success: oklch(0.7 0.17 145);
+  --success-foreground: oklch(0.15 0.02 145);
+  --border: oklch(0.93 0.005 250);
+  --input: oklch(0.93 0.005 250);
+  --ring: oklch(0.85 0.18 95);
+  --sidebar: oklch(0.99 0.005 95);
+  --sidebar-foreground: oklch(0.18 0.01 250);
+  --sidebar-primary: oklch(0.88 0.185 95);
+  --sidebar-primary-foreground: oklch(0.16 0.01 250);
+  --sidebar-accent: oklch(0.96 0.05 95);
+  --sidebar-accent-foreground: oklch(0.18 0.01 250);
+  --sidebar-border: oklch(0.93 0.005 250);
+  --sidebar-ring: oklch(0.85 0.18 95);
+  --gradient-sun: linear-gradient(135deg, #ffe14a 0%, #ffd700 60%, #ffb300 100%);
+  --gradient-soft: linear-gradient(180deg, #fffdf3 0%, #ffffff 100%);
+  --shadow-glow: 0 24px 60px -20px rgba(255, 215, 0, 0.55);
+  --shadow-card: 0 8px 24px -12px rgba(20, 20, 30, 0.12);
+}
+
+.dark {
+  --background: oklch(0.16 0.01 250);
+  --foreground: oklch(0.98 0.005 95);
+  --card: oklch(0.2 0.01 250);
+  --card-foreground: oklch(0.98 0.005 95);
+  --popover: oklch(0.2 0.01 250);
+  --popover-foreground: oklch(0.98 0.005 95);
+  --primary: oklch(0.88 0.185 95);
+  --primary-foreground: oklch(0.16 0.01 250);
+  --secondary: oklch(0.26 0.01 250);
+  --secondary-foreground: oklch(0.98 0.005 95);
+  --muted: oklch(0.26 0.01 250);
+  --muted-foreground: oklch(0.7 0.01 250);
+  --accent: oklch(0.32 0.05 90);
+  --accent-foreground: oklch(0.98 0.005 95);
+  --destructive: oklch(0.65 0.22 25);
+  --destructive-foreground: oklch(0.98 0 0);
+  --success: oklch(0.72 0.17 145);
+  --success-foreground: oklch(0.15 0.02 145);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 12%);
+  --ring: oklch(0.85 0.18 95);
+  --sidebar: oklch(0.2 0.01 250);
+  --sidebar-foreground: oklch(0.98 0.005 95);
+  --sidebar-primary: oklch(0.88 0.185 95);
+  --sidebar-primary-foreground: oklch(0.16 0.01 250);
+  --sidebar-accent: oklch(0.32 0.05 90);
+  --sidebar-accent-foreground: oklch(0.98 0.005 95);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.85 0.18 95);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  html,
+  body {
+    font-family: var(--font-display);
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+  }
+}
+
+@layer utilities {
+  .text-bubble-food {
+    color: var(--color-primary);
+    text-shadow:
+      0 2px 0 #ffffff,
+      0 0 0 #ffffff,
+      2px 0 0 #b8860b,
+      -2px 0 0 #b8860b,
+      0 2px 0 #b8860b,
+      0 -2px 0 #b8860b,
+      2px 2px 0 #b8860b,
+      -2px 2px 0 #b8860b,
+      0 5px 12px rgba(255, 215, 0, 0.28);
+  }
+
+  .bg-gradient-sun {
+    background-image: var(--gradient-sun);
+  }
+
+  .bg-gradient-soft {
+    background-image: var(--gradient-soft);
+  }
+
+  .shadow-glow {
+    box-shadow: var(--shadow-glow);
+  }
+
+  .shadow-card {
+    box-shadow: var(--shadow-card);
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+}
