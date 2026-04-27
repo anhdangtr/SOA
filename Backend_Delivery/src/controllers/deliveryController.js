@@ -1,7 +1,9 @@
 import {
+  cancelDelivery,
   createDelivery,
   getDeliveryByOrderId,
   markDeliveryAsDelivered,
+  updateDeliveryStatus,
 } from "../services/deliveryService.js";
 import { shipmentModel } from "../models/shipmentModel.js";
 
@@ -27,6 +29,26 @@ export async function getDeliveryController(request, response) {
 
 export async function markDeliveredController(request, response) {
   const delivery = await markDeliveryAsDelivered(request.params.orderId);
+  if (!delivery) {
+    response.status(404).json({ message: "Delivery not found" });
+    return;
+  }
+
+  response.json({ success: true, delivery });
+}
+
+export async function updateDeliveryStatusController(request, response) {
+  const delivery = await updateDeliveryStatus(request.params.orderId, request.body);
+  if (!delivery) {
+    response.status(404).json({ message: "Delivery not found" });
+    return;
+  }
+
+  response.json({ success: true, delivery });
+}
+
+export async function cancelDeliveryController(request, response) {
+  const delivery = await cancelDelivery(request.params.orderId);
   if (!delivery) {
     response.status(404).json({ message: "Delivery not found" });
     return;

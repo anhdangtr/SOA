@@ -9,20 +9,68 @@ import {
   Truck,
   XCircle,
 } from "lucide-react";
-import { subscribe } from "@/services/order/order.api";
+import { toast } from "sonner";
+import { cancelOrder, subscribe } from "@/services/order/order.api";
 import { STATUS_FLOW, STATUS_LABEL, type Order, type OrderStatus } from "@/shared/order.types";
 
-// 1. FIX TẠI ĐÂY: Cập nhật danh sách Icon khớp với 4 bước mới
 const ICONS: Record<OrderStatus, React.ComponentType<{ className?: string }>> = {
   PENDING_PAYMENT: CreditCard,
   CONFIRMED: CheckCircle2,
-  DELIVERING: Truck, // Dùng icon xe tải cho bước giao hàng
+  DELIVERING: Truck,
   DELIVERED: PackageCheck,
   CANCELLED: XCircle,
 };
 
+const DELIVERY_STATUS_LABEL: Record<NonNullable<Order["delivery"]>["status"], string> = {
+  DELIVERING: "On the way",
+  DELIVERED: "Delivered",
+  CANCELLED: "Cancelled",
+};
+
+const STATUS_STYLES: Record<
+  OrderStatus,
+  {
+    badge: string;
+    icon: string;
+    activeStep: string;
+    reachedStep: string;
+  }
+> = {
+  PENDING_PAYMENT: {
+    badge: "bg-amber-100 text-amber-800",
+    icon: "bg-amber-500 text-white",
+    activeStep: "border-amber-300 bg-amber-50",
+    reachedStep: "border-amber-300 bg-amber-50",
+  },
+  CONFIRMED: {
+    badge: "bg-sky-100 text-sky-800",
+    icon: "bg-sky-500 text-white",
+    activeStep: "border-sky-300 bg-sky-50",
+    reachedStep: "border-sky-300 bg-sky-50",
+  },
+  DELIVERING: {
+    badge: "bg-orange-100 text-orange-800",
+    icon: "bg-orange-500 text-white",
+    activeStep: "border-orange-300 bg-orange-50",
+    reachedStep: "border-orange-300 bg-orange-50",
+  },
+  DELIVERED: {
+    badge: "bg-emerald-100 text-emerald-800",
+    icon: "bg-emerald-500 text-white",
+    activeStep: "border-emerald-300 bg-emerald-50",
+    reachedStep: "border-emerald-300 bg-emerald-50",
+  },
+  CANCELLED: {
+    badge: "bg-slate-100 text-slate-700",
+    icon: "bg-slate-500 text-white",
+    activeStep: "border-slate-300 bg-slate-50",
+    reachedStep: "border-slate-300 bg-slate-50",
+  },
+};
+
 export function OrderTracker({ orderId }: { orderId: string }) {
   const [order, setOrder] = useState<Order | undefined>();
+  const [isCancelling, setIsCancelling] = useState(false);
 
   useEffect(() => subscribe((all) => setOrder(all[orderId])), [orderId]);
 
@@ -35,8 +83,32 @@ export function OrderTracker({ orderId }: { orderId: string }) {
   }
 
   const cancelled = order.status === "CANCELLED";
+  const canCancel = order.status !== "CANCELLED" && order.status !== "DELIVERED";
+  const isActivelyDelivering = order.status === "DELIVERING" && order.delivery?.status === "DELIVERING";
   const currentIdx = STATUS_FLOW.indexOf(order.status);
   const progress = cancelled ? 0 : Math.max(0, (currentIdx / (STATUS_FLOW.length - 1)) * 100);
+  const currentStatusStyle = STATUS_STYLES[order.status];
+
+  const handleCancelOrder = async () => {
+    if (!canCancel || isCancelling) {
+      return;
+    }
+
+    const confirmed = window.confirm("Cancel this order?");
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      setIsCancelling(true);
+      await cancelOrder(orderId);
+      toast.success("Order cancelled");
+    } catch {
+      toast.error("Unable to cancel order right now");
+    } finally {
+      setIsCancelling(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -70,6 +142,32 @@ export function OrderTracker({ orderId }: { orderId: string }) {
               </span>
             )}
           </div>
+          {isActivelyDelivering && order.delivery && (
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <div className="rounded-xl bg-foreground/10 px-4 py-3 backdrop-blur">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-foreground/70">
+                  Expected Delivery
+                </p>
+                <p className="mt-1 text-sm font-bold text-foreground">
+                  {new Date(order.delivery.estimatedDeliveryAt).toLocaleString("vi-VN", {
+                    day: "2-digit",
+                    month: "2-digit",
+                    year: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </p>
+              </div>
+              <div className="rounded-xl bg-foreground/10 px-4 py-3 backdrop-blur">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-foreground/70">
+                  Delivery Status
+                </p>
+                <p className="mt-1 text-sm font-bold text-foreground">
+                  {DELIVERY_STATUS_LABEL[order.delivery.status]}
+                </p>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="p-6">
@@ -84,9 +182,7 @@ export function OrderTracker({ orderId }: { orderId: string }) {
                 <XCircle className="mt-0.5 h-5 w-5 shrink-0" />
                 <div>
                   <p className="font-semibold">Order Cancelled</p>
-                  <p className="text-sm opacity-90">
-                    Payment failed. The Delivery Service was not triggered.
-                  </p>
+                  <p className="text-sm opacity-90">This order was cancelled before completion.</p>
                 </div>
               </motion.div>
             ) : (
@@ -97,11 +193,13 @@ export function OrderTracker({ orderId }: { orderId: string }) {
                     initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -8 }}
-                    className="mb-5 flex items-center gap-3 rounded-xl bg-primary/15 p-3"
+                    className={`mb-5 flex items-center gap-3 rounded-xl p-3 ${currentStatusStyle.badge}`}
                   >
-                    <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                    <span
+                      className={`flex h-9 w-9 items-center justify-center rounded-full ${currentStatusStyle.icon}`}
+                    >
                       {(() => {
-                        const Icon = ICONS[order.status] || CreditCard; // Thêm fallback để tránh lỗi
+                        const Icon = ICONS[order.status] || CreditCard;
                         return <Icon className="h-4 w-4" />;
                       })()}
                     </span>
@@ -130,10 +228,14 @@ export function OrderTracker({ orderId }: { orderId: string }) {
                     return (
                       <li
                         key={s}
-                        className={`flex flex-col items-center gap-2 rounded-xl border p-3 text-center text-xs transition ${reached ? "border-primary/40 bg-primary/10" : "border-border bg-background"}`}
+                        className={`flex flex-col items-center gap-2 rounded-xl border p-3 text-center text-xs transition ${
+                          reached ? STATUS_STYLES[s].reachedStep : "border-border bg-background"
+                        }`}
                       >
                         <span
-                          className={`flex h-9 w-9 items-center justify-center rounded-full ${reached ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"} ${active ? "animate-pulse" : ""}`}
+                          className={`flex h-9 w-9 items-center justify-center rounded-full ${
+                            reached ? STATUS_STYLES[s].icon : "bg-muted text-muted-foreground"
+                          } ${active ? "animate-pulse" : ""}`}
                         >
                           <Icon className="h-4 w-4" />
                         </span>
@@ -149,6 +251,19 @@ export function OrderTracker({ orderId }: { orderId: string }) {
           </AnimatePresence>
         </div>
       </div>
+
+      {canCancel && (
+        <div className="flex justify-end">
+          <button
+            onClick={handleCancelOrder}
+            disabled={isCancelling}
+            className="inline-flex items-center gap-2 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-2 text-sm font-semibold text-destructive transition hover:bg-destructive/15 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <XCircle className="h-4 w-4" />
+            {isCancelling ? "Cancelling..." : "Cancel order"}
+          </button>
+        </div>
+      )}
 
       {/* Timeline */}
       <div className="rounded-2xl border border-border bg-card p-6 shadow-card">

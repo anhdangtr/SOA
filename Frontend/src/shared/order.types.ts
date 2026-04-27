@@ -37,8 +37,9 @@ export type Delivery = {
   orderId: string;
   id: string;
   etaMinutes: number;
+  estimatedDeliveryAt: number;
   courier: string;
-  status: "DELIVERING" | "DELIVERED";
+  status: "DELIVERING" | "DELIVERED" | "CANCELLED";
 };
 
 export type OrderHistory = {
@@ -50,6 +51,7 @@ export type OrderHistory = {
 
 export type Order = {
   id: string;
+  internalId: string;
   createdAt: number;
   customer: {
     name: string;
@@ -72,7 +74,9 @@ export type Order = {
   delivery?: {
     id: string;
     etaMinutes: number;
+    estimatedDeliveryAt: number;
     courier: string;
+    status: Delivery["status"];
   };
   history: OrderHistory[];
 };

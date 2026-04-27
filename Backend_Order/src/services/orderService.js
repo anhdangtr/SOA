@@ -6,6 +6,14 @@ const PAYMENT_METHODS = ["card", "transfer", "cod"];
 const ORDER_PAYMENT_METHODS = [...PAYMENT_METHODS, "pending"];
 const DEFAULT_SHIPPING_FEE = 25;
 
+function isUuid(value) {
+  return typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
+function isOrderCode(value) {
+  return typeof value === "string" && /^DH\d{7}$/i.test(value);
+}
+
 function createError(status, message) {
   const error = new Error(message);
   error.status = status;
@@ -96,6 +104,22 @@ function buildCustomerAddress(customer) {
   return [customer.houseNumber, customer.ward, customer.province].filter(Boolean).join(", ");
 }
 
+function buildOrderLookup(orderIdentifier) {
+  const normalized = typeof orderIdentifier === "string" ? orderIdentifier.trim() : "";
+
+  if (isUuid(normalized)) {
+    return {
+      sql: "SELECT * FROM orders WHERE id = $1::uuid LIMIT 1",
+      params: [normalized],
+    };
+  }
+
+  return {
+    sql: "SELECT * FROM orders WHERE order_code = $1 LIMIT 1",
+    params: [normalized.toUpperCase()],
+  };
+}
+
 function mapBaseStatus(status, delivery) {
   if (status === "CANCELLED") {
     return "CANCELLED";
@@ -127,7 +151,7 @@ function buildHistory(orderRow, payment, delivery) {
     },
   ];
 
-  if (orderRow.status === "CANCELLED" || payment?.status === "FAILED") {
+  if (payment?.status === "FAILED") {
     history.push({
       status: "CANCELLED",
       at: payment?.updatedAt ?? payment?.createdAt ?? new Date(orderRow.updated_at).getTime(),
@@ -146,7 +170,11 @@ function buildHistory(orderRow, payment, delivery) {
     });
   }
 
-  if (delivery?.status === "DELIVERING" || delivery?.status === "DELIVERED") {
+  if (
+    delivery?.status === "DELIVERING" ||
+    delivery?.status === "DELIVERED" ||
+    delivery?.status === "CANCELLED"
+  ) {
     history.push({
       status: "DELIVERING",
       at: delivery.createdAt ?? new Date(orderRow.updated_at).getTime(),
@@ -164,6 +192,19 @@ function buildHistory(orderRow, payment, delivery) {
     });
   }
 
+  if (orderRow.status === "CANCELLED") {
+    history.push({
+      status: "CANCELLED",
+      at: delivery?.updatedAt ?? payment?.updatedAt ?? new Date(orderRow.updated_at).getTime(),
+      service: delivery?.status === "CANCELLED" ? "Delivery Service" : "Order Service",
+      note:
+        delivery?.status === "CANCELLED"
+          ? "Delivery was cancelled before completion."
+          : "Order was cancelled.",
+    });
+    return history;
+    }
+
   return history;
 }
 
@@ -171,7 +212,8 @@ function mapOrder(orderRow, payment, delivery) {
   const lines = Array.isArray(orderRow.lines) ? orderRow.lines : [];
 
   return {
-    id: orderRow.id,
+    id: orderRow.order_code,
+    internalId: orderRow.id,
     createdAt: new Date(orderRow.created_at).getTime(),
     customer: {
       name: orderRow.customer_name,
@@ -193,7 +235,7 @@ function mapOrder(orderRow, payment, delivery) {
     payment:
       payment ??
       ({
-        orderId: orderRow.id,
+        orderId: orderRow.order_code,
         method: orderRow.payment_method,
         status: "PENDING",
       }),
@@ -201,7 +243,9 @@ function mapOrder(orderRow, payment, delivery) {
       ? {
           id: delivery.id,
           etaMinutes: delivery.etaMinutes,
+          estimatedDeliveryAt: delivery.estimatedDeliveryAt,
           courier: delivery.courier,
+          status: delivery.status,
         }
       : undefined,
     history: buildHistory(orderRow, payment, delivery),
@@ -209,7 +253,8 @@ function mapOrder(orderRow, payment, delivery) {
 }
 
 async function loadOrderRow(client, orderId) {
-  const result = await client.query("SELECT * FROM orders WHERE id = $1::uuid", [orderId]);
+  const lookup = buildOrderLookup(orderId);
+  const result = await client.query(lookup.sql, lookup.params);
   return result.rows[0] ?? null;
 }
 
@@ -313,32 +358,35 @@ exports.updateOrderStatus = async (orderId, status) => {
     return null;
   }
 
+  const internalOrderId = current.internalId;
+
   if (current.status === "CANCELLED" || current.status === "DELIVERED") {
     throw createError(409, "Order can no longer change status");
   }
 
   if (status === "CANCELLED") {
-    await pool.query("UPDATE orders SET status = 'CANCELLED', updated_at = NOW() WHERE id = $1::uuid", [orderId]);
+    await pool.query("UPDATE orders SET status = 'CANCELLED', updated_at = NOW() WHERE id = $1::uuid", [internalOrderId]);
+    await patchJson(`${config.deliveryServiceUrl}/deliveries/${internalOrderId}/cancel`);
   } else if (status === "CONFIRMED") {
-    await pool.query("UPDATE orders SET status = 'CONFIRMED', updated_at = NOW() WHERE id = $1::uuid", [orderId]);
+    await pool.query("UPDATE orders SET status = 'CONFIRMED', updated_at = NOW() WHERE id = $1::uuid", [internalOrderId]);
   } else if (status === "DELIVERING") {
-    await pool.query("UPDATE orders SET status = 'CONFIRMED', updated_at = NOW() WHERE id = $1::uuid", [orderId]);
+    await pool.query("UPDATE orders SET status = 'CONFIRMED', updated_at = NOW() WHERE id = $1::uuid", [internalOrderId]);
     await postJson(`${config.deliveryServiceUrl}/deliveries`, {
-      orderId,
+      orderId: internalOrderId,
       address: current.customer.address,
     }).catch(() => null);
   } else if (status === "DELIVERED") {
-    await pool.query("UPDATE orders SET status = 'CONFIRMED', updated_at = NOW() WHERE id = $1::uuid", [orderId]);
-    const delivery = await fetchJson(`${config.deliveryServiceUrl}/deliveries/${orderId}`);
+    await pool.query("UPDATE orders SET status = 'CONFIRMED', updated_at = NOW() WHERE id = $1::uuid", [internalOrderId]);
+    const delivery = await fetchJson(`${config.deliveryServiceUrl}/deliveries/${internalOrderId}`);
     if (!delivery) {
       await postJson(`${config.deliveryServiceUrl}/deliveries`, {
-        orderId,
+        orderId: internalOrderId,
         address: current.customer.address,
       });
     }
-    await patchJson(`${config.deliveryServiceUrl}/deliveries/${orderId}/delivered`);
+    await patchJson(`${config.deliveryServiceUrl}/deliveries/${internalOrderId}/delivered`);
   } else {
-    await pool.query("UPDATE orders SET status = 'PENDING', updated_at = NOW() WHERE id = $1::uuid", [orderId]);
+    await pool.query("UPDATE orders SET status = 'PENDING', updated_at = NOW() WHERE id = $1::uuid", [internalOrderId]);
   }
 
   return exports.getOrderById(orderId);
@@ -354,13 +402,15 @@ exports.updatePaymentMethod = async (orderId, paymentMethod) => {
     return null;
   }
 
+  const internalOrderId = current.internalId;
+
   if (current.status === "CANCELLED" || current.status === "DELIVERED") {
     throw createError(409, "Order can no longer change payment method");
   }
 
   await pool.query(
     "UPDATE orders SET payment_method = $2, updated_at = NOW() WHERE id = $1::uuid",
-    [orderId, paymentMethod],
+    [internalOrderId, paymentMethod],
   );
 
   return exports.getOrderById(orderId);

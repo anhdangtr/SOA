@@ -151,7 +151,7 @@ export function QuickCart() {
                 : "bg-primary text-primary-foreground shadow-glow hover:brightness-95"
             }`}
           >
-            Review Cart →
+            Cart →
           </Link>
         </footer>
       </div>

@@ -221,7 +221,7 @@ function CheckoutPage() {
         <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">Checkout</p>
         <h1 className="mt-1 text-4xl font-extrabold">Confirm delivery and place the order</h1>
         <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
-          Dien thong tin giao hang truoc, sau do nhan Continue de sang trang chon phuong thuc thanh toan.
+          Complete delivery details and choose how to place the order.
         </p>
       </header>
 
@@ -394,10 +394,9 @@ function CheckoutPage() {
                   </div>
 
                   <div className="mt-5 rounded-2xl bg-primary/10 p-4 text-sm">
-                    <p className="font-bold">What happens next</p>
+                    <p className="font-bold">Please check the information</p>
                     <p className="mt-1 text-muted-foreground">
-                      Continue will save this order first, then bring you to the payment page to choose
-                      `card`, `transfer`, or `cod`.
+                      If correct, click Continue to place the order. You will have a chance to review the order summary again before confirming payment.
                     </p>
                   </div>
 

@@ -47,6 +47,10 @@ export async function manualAdvance(orderId: string, target: OrderStatus) {
   });
 }
 
+export async function cancelOrder(orderId: string) {
+  await manualAdvance(orderId, "CANCELLED");
+}
+
 export async function updatePaymentMethod(orderId: string, paymentMethod: OrderPaymentMethod) {
   await httpJson<void>(`${appConfig.orderServiceUrl}/orders/${orderId}/payment-method`, {
     method: "PATCH",

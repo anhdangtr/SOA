@@ -104,17 +104,17 @@ function PaymentPage() {
 
     try {
       setProcessing(true);
-      await updatePaymentMethod(order.id, activeMethod);
+      await updatePaymentMethod(order.internalId, activeMethod);
 
       if (activeMethod === "cod") {
-        await manualAdvance(order.id, "DELIVERING");
+        await manualAdvance(order.internalId, "DELIVERING");
         toast.success("COD order confirmed. Your order is now shipping.");
         navigate({ to: "/order/$orderId", params: { orderId: order.id } });
         return;
       }
 
-      await processPayment(order.id, "SUCCESS", activeMethod);
-      await manualAdvance(order.id, "DELIVERING");
+      await processPayment(order.internalId, "SUCCESS", activeMethod);
+      await manualAdvance(order.internalId, "DELIVERING");
       toast.success("Payment successful. Your order is now shipping.");
       navigate({ to: "/order/$orderId", params: { orderId: order.id } });
     } catch (error) {
@@ -128,7 +128,7 @@ function PaymentPage() {
     <main className="mx-auto max-w-6xl px-5 py-10 pb-16">
       <header className="mb-8">
         <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">Payment</p>
-        <h1 className="mt-1 text-4xl font-extrabold">Choose payment method for order #{order.id.slice(0, 8)}</h1>
+        <h1 className="mt-1 text-4xl font-extrabold">Choose payment method for order {order.id}</h1>
         <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
           If you cancel here, the order remains saved in pending status.
         </p>
@@ -157,19 +157,19 @@ function PaymentPage() {
                       id: "card" as PaymentMethod,
                       label: "Card",
                       icon: CreditCard,
-                      sub: "Thanh toan ngay bang the.",
+                      sub: "Fill in card details and process payment online.",
                     },
                     {
                       id: "transfer" as PaymentMethod,
                       label: "Transfer",
                       icon: QrCode,
-                      sub: "Quet QR hoac chuyen khoan dung so tien.",
+                      sub: "Scan QR or transfer money to the specified account.",
                     },
                     {
                       id: "cod" as PaymentMethod,
                       label: "Cash on delivery",
                       icon: Truck,
-                      sub: "Chuyen don sang shipping ngay sau khi xac nhan.",
+                      sub: "Fill in the delivery details and confirm the order.",
                     },
                   ].map((item) => {
                     const active = activeMethod === item.id;
@@ -238,7 +238,7 @@ function PaymentPage() {
                     disabled={processing}
                     className="w-full rounded-2xl border border-border bg-background px-4 py-3 text-sm font-bold transition hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    Huy
+                    Cancel
                   </button>
                   <button
                     type="button"
@@ -246,7 +246,7 @@ function PaymentPage() {
                     disabled={processing}
                     className="w-full rounded-2xl bg-primary px-4 py-3 text-sm font-bold text-primary-foreground shadow-glow transition hover:brightness-95 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    {processing ? "Dang xu ly..." : alreadyCompleted ? "Xem don hang" : "Thanh toan thanh cong"}
+                    {processing ? "Processing..." : alreadyCompleted ? "View Order" : "Payment Successful"}
                   </button>
                 </div>
               </div>
@@ -277,7 +277,7 @@ function PaymentPage() {
                     disabled={processing}
                     className="w-full rounded-2xl border border-border bg-background px-4 py-3 text-sm font-bold transition hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    Huy
+                    Cancel
                   </button>
                   <button
                     type="button"
@@ -285,7 +285,7 @@ function PaymentPage() {
                     disabled={processing}
                     className="w-full rounded-2xl bg-primary px-4 py-3 text-sm font-bold text-primary-foreground shadow-glow transition hover:brightness-95 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    {processing ? "Dang xu ly..." : alreadyCompleted ? "Xem don hang" : "Thanh toan thanh cong"}
+                    {processing ? "Processing..." : alreadyCompleted ? "View Order" : "Payment Successful"}
                   </button>
                 </div>
               </div>
@@ -297,8 +297,8 @@ function PaymentPage() {
                   <Truck className="h-5 w-5 text-primary" />
                   <p className="text-lg font-bold">Cash on delivery</p>
                 </div>
-                <div className="rounded-2xl border border-border bg-card p-4 text-sm text-muted-foreground">
-                  Ban khong can thanh toan online. Xac nhan COD o day va don hang se duoc chuyen sang shipping ngay.
+                <div className="rounded-2xl border border-border bg-card p-4 text-sm text-muted-foreground">You do not need online payment. Confirm Cash on Delivery (COD) here, and the order will be transferred to shipping immediately.
+                  
                 </div>
                 <div className="flex flex-col gap-3 sm:flex-row">
                   <button
@@ -307,7 +307,7 @@ function PaymentPage() {
                     disabled={processing}
                     className="w-full rounded-2xl border border-border bg-background px-4 py-3 text-sm font-bold transition hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    Huy
+                    Cancel
                   </button>
                   <button
                     type="button"
@@ -315,7 +315,7 @@ function PaymentPage() {
                     disabled={processing}
                     className="w-full rounded-2xl bg-primary px-4 py-3 text-sm font-bold text-primary-foreground shadow-glow transition hover:brightness-95 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    {processing ? "Dang xu ly..." : alreadyCompleted ? "Xem don hang" : "Xac nhan COD"}
+                    {processing ? "Processing..." : alreadyCompleted ? "View Order" : "Confirm COD"}
                   </button>
                 </div>
               </div>

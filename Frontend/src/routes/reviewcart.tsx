@@ -67,7 +67,7 @@ function ReviewCartPage() {
   return (
     <main className="mx-auto max-w-6xl px-5 py-10 pb-16">
       <header className="mb-8">
-        <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">Review Cart</p>
+        <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">review Cart</p>
         <h1 className="mt-1 text-4xl font-extrabold">Choose items for checkout</h1>
         <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
           Select the products you want to purchase now. Anything not selected will stay in the cart.
@@ -200,9 +200,9 @@ function ReviewCartPage() {
         >
           <div className="bg-gradient-sun p-6">
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-foreground/60">
-              ReviewCart Summary
+              Ready to buy now
             </p>
-            <h2 className="mt-2 text-3xl font-extrabold text-foreground">Ready to buy now</h2>
+            <h2 className="mt-2 text-3xl font-extrabold text-foreground">Summary</h2>
           </div>
 
           <div className="space-y-5 p-6">

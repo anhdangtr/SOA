@@ -4,6 +4,14 @@ import { Search } from "lucide-react";
 import { subscribe } from "@/services/order/order.api";
 import { type Order, STATUS_LABEL } from "@/shared/order.types";
 
+const STATUS_BADGE_STYLES: Record<Order["status"], string> = {
+  PENDING_PAYMENT: "bg-amber-100 text-amber-800",
+  CONFIRMED: "bg-sky-100 text-sky-800",
+  DELIVERING: "bg-orange-100 text-orange-800",
+  DELIVERED: "bg-emerald-100 text-emerald-800",
+  CANCELLED: "bg-slate-200 text-slate-700",
+};
+
 export const Route = createFileRoute("/track")({
   head: () => ({
     meta: [
@@ -49,7 +57,7 @@ function TrackPage() {
           <input
             value={orderId}
             onChange={(e) => setOrderId(e.target.value.toUpperCase())}
-            placeholder="ORD-XXXXXX"
+            placeholder="DH1234567"
             className="w-full rounded-full border border-input bg-background py-3 pl-11 pr-4 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/30"
           />
         </div>
@@ -76,7 +84,9 @@ function TrackPage() {
                       {o.lines.reduce((n, l) => n + l.qty, 0)} items - {o.total}k
                     </p>
                   </div>
-                  <span className="rounded-full bg-primary/15 px-3 py-1 text-xs font-semibold text-foreground">
+                  <span
+                    className={`rounded-full px-3 py-1 text-xs font-semibold ${STATUS_BADGE_STYLES[o.status]}`}
+                  >
                     {STATUS_LABEL[o.status]}
                   </span>
                 </button>

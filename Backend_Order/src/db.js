@@ -51,6 +51,10 @@ function isUuid(value) {
   return typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }
 
+function isOrderCode(value) {
+  return typeof value === "string" && /^DH\d{7}$/i.test(value);
+}
+
 function normalizeTimestamp(value) {
   if (!value) {
     return new Date();
@@ -187,6 +191,10 @@ async function migrateOrdersTable() {
     ) AS exists
   `);
 
+  await pool.query(`
+    CREATE SEQUENCE IF NOT EXISTS order_code_seq START WITH 1 INCREMENT BY 1;
+  `);
+
   let legacyRows = [];
   if (ordersExists.rows[0].exists) {
     const result = await pool.query("SELECT * FROM orders");
@@ -197,6 +205,7 @@ async function migrateOrdersTable() {
   await pool.query(`
     CREATE TABLE orders (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      order_code VARCHAR(9) NOT NULL UNIQUE DEFAULT ('DH' || LPAD(nextval('order_code_seq')::text, 7, '0')),
       customer_name VARCHAR(255) NOT NULL,
       customer_phone VARCHAR(50) NOT NULL,
       customer_province VARCHAR(120) NOT NULL,
@@ -222,6 +231,7 @@ async function migrateOrdersTable() {
     await pool.query(
       `INSERT INTO orders (
         id,
+        order_code,
         customer_name,
         customer_phone,
         customer_province,
@@ -242,7 +252,7 @@ async function migrateOrdersTable() {
       )
       VALUES (
         COALESCE($1::uuid, gen_random_uuid()),
-        $2,
+        COALESCE($2, ('DH' || LPAD(nextval('order_code_seq')::text, 7, '0'))),
         $3,
         $4,
         $5,
@@ -255,13 +265,15 @@ async function migrateOrdersTable() {
         $12,
         $13,
         $14,
-        $15::jsonb,
-        $16,
+        $15,
+        $16::jsonb,
         $17,
-        $18
+        $18,
+        $19
       )`,
       [
         isUuid(row.id) ? row.id : undefined,
+        isOrderCode(row.order_code) ? row.order_code.toUpperCase() : undefined,
         customer.name,
         customer.phone,
         customer.province,

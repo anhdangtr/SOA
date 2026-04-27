@@ -9,6 +9,11 @@ export function errorHandler(error, _request, response, _next) {
     return;
   }
 
+  if (error?.status) {
+    response.status(error.status).json({ message: error.message });
+    return;
+  }
+
   console.error(error);
   response.status(500).json({ message: "Internal server error" });
 }
