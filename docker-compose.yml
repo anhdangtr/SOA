@@ -1,0 +1,160 @@
+services:
+  order-db:
+    image: postgres:16-alpine
+    container_name: order-db
+    environment:
+      POSTGRES_DB: SOA_Order
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: anh1234
+    ports:
+      - "5431:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d SOA_Order"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - order_db_data:/var/lib/postgresql/data
+
+  payment-db:
+    image: postgres:16-alpine
+    container_name: payment-db
+    environment:
+      POSTGRES_DB: SOA_Payment
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: anh1234
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d SOA_Payment"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - payment_db_data:/var/lib/postgresql/data
+
+  delivery-db:
+    image: postgres:16-alpine
+    container_name: delivery-db
+    environment:
+      POSTGRES_DB: SOA_delivery
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: anh1234
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d SOA_delivery"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - delivery_db_data_v2:/var/lib/postgresql/data
+
+  backend-order:
+    build:
+      context: ./Backend_Order
+      target: dev
+    container_name: backend-order
+    command: npm run dev -- -L
+    environment:
+      PORT: 8081
+      DB_HOST: order-db
+      DB_PORT: 5432
+      DB_NAME: SOA_Order
+      DB_USER: postgres
+      DB_PASSWORD: anh1234
+      DB_SSL: "false"
+      PAYMENT_SERVICE_URL: http://backend-payment:8082
+      DELIVERY_SERVICE_URL: http://backend-delivery:8083
+    ports:
+      - "18081:8081"
+    volumes:
+      - ./Backend_Order:/app
+      - backend_order_node_modules:/app/node_modules
+    depends_on:
+      order-db:
+        condition: service_healthy
+      backend-payment:
+        condition: service_started
+      backend-delivery:
+        condition: service_started
+
+  backend-payment:
+    build:
+      context: ./Backend_Payment
+      target: dev
+    container_name: backend-payment
+    command: npm run dev -- -L
+    environment:
+      PORT: 8082
+      DB_HOST: payment-db
+      DB_PORT: 5432
+      DB_NAME: SOA_Payment
+      DB_USER: postgres
+      DB_PASSWORD: anh1234
+      DB_SSL: "false"
+      ORDER_SERVICE_URL: http://backend-order:8081
+    ports:
+      - "18082:8082"
+    volumes:
+      - ./Backend_Payment:/app
+      - backend_payment_node_modules:/app/node_modules
+    depends_on:
+      payment-db:
+        condition: service_healthy
+
+  backend-delivery:
+    build:
+      context: ./Backend_Delivery
+      target: dev
+    container_name: backend-delivery
+    environment:
+      PORT: 8083
+      DB_HOST: delivery-db
+      DB_PORT: 5432
+      DB_NAME: SOA_delivery
+      DB_USER: postgres
+      DB_PASSWORD: anh1234
+      DB_SSL: "false"
+      CORS_ORIGIN: http://localhost:13000,http://localhost:5173
+      DELIVERY_DEFAULT_ETA_MINUTES: 25
+    ports:
+      - "18083:8083"
+    volumes:
+      - ./Backend_Delivery:/app
+      - backend_delivery_node_modules:/app/node_modules
+    depends_on:
+      delivery-db:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./Frontend
+      target: dev
+    container_name: frontend
+    environment:
+      CHOKIDAR_USEPOLLING: "true"
+      CHOKIDAR_INTERVAL: 300
+      VITE_API_MODE: live
+      VITE_DELIVERY_API_MODE: live
+      VITE_ORDER_SERVICE_URL: http://localhost:18081
+      VITE_PAYMENT_SERVICE_URL: http://localhost:18082
+      VITE_DELIVERY_SERVICE_URL: http://localhost:18083
+    ports:
+      - "13000:3000"
+    volumes:
+      - ./Frontend:/app
+      - frontend_node_modules:/app/node_modules
+    depends_on:
+      - backend-order
+      - backend-payment
+      - backend-delivery
+
+volumes:
+  order_db_data:
+  payment_db_data:
+  delivery_db_data_v2:
+  backend_order_node_modules:
+  backend_payment_node_modules:
+  backend_delivery_node_modules:
+  frontend_node_modules:

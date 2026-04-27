@@ -34,6 +34,7 @@ export const Route = createFileRoute("/")({
 
 function Home() {
   const trending = MENU.filter((m) => m.trending);
+  const heroImage = trending.find((item) => item.category === "salt-baked-chicken")?.image ?? "/menu/ga-1.jpg";
 
   return (
     <main>
@@ -117,7 +118,7 @@ function Home() {
               <div className="absolute -inset-6 bg-gradient-sun opacity-20 blur-2xl" />
 
               <img
-                src="https://aicdn.picsart.com/5b225474-2096-4ebd-97a8-463618589918.jpg"
+                src={heroImage}
                 alt="Chau Ngoc Thao signature food"
                 className="relative aspect-[5/4] w-full object-cover transition duration-500 hover:scale-105"
               />
