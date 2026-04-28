@@ -117,12 +117,49 @@ jobs:
             .registeredBy
           )' task-definition.json > task-definition.clean.json
 
+      - name: Resolve container name
+        id: resolve-container
+        shell: bash
+        env:
+          REQUESTED_CONTAINER_NAME: ${{ env.ECS_CONTAINER_NAME }}
+        run: |
+          set -euo pipefail
+
+          mapfile -t CONTAINER_NAMES < <(jq -r '.containerDefinitions[].name' task-definition.clean.json)
+          CONTAINER_COUNT="${#CONTAINER_NAMES[@]}"
+
+          echo "Container names in task definition: ${CONTAINER_NAMES[*]}"
+
+          if [ "$CONTAINER_COUNT" -eq 0 ]; then
+            echo "No container definitions were found in the ECS task definition."
+            exit 1
+          fi
+
+          if [ -n "$REQUESTED_CONTAINER_NAME" ]; then
+            for name in "${CONTAINER_NAMES[@]}"; do
+              if [ "$name" = "$REQUESTED_CONTAINER_NAME" ]; then
+                echo "value=$REQUESTED_CONTAINER_NAME" >> "$GITHUB_OUTPUT"
+                exit 0
+              fi
+            done
+          fi
+
+          if [ "$CONTAINER_COUNT" -eq 1 ]; then
+            echo "Requested container name '${REQUESTED_CONTAINER_NAME}' was not found. Falling back to the only container '${CONTAINER_NAMES[0]}'."
+            echo "value=${CONTAINER_NAMES[0]}" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "Requested container name '${REQUESTED_CONTAINER_NAME}' was not found."
+          echo "Available container names: ${CONTAINER_NAMES[*]}"
+          exit 1
+
       - name: Render new task definition
         id: task-def
         uses: aws-actions/amazon-ecs-render-task-definition@v1
         with:
           task-definition: task-definition.clean.json
-          container-name: ${{ env.ECS_CONTAINER_NAME }}
+          container-name: ${{ steps.resolve-container.outputs.value }}
           image: ${{ steps.meta.outputs.image_uri }}
 
       - name: Deploy to Amazon ECS
