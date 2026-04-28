@@ -28,12 +28,43 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
+      - name: Validate AWS credential shape
+        shell: bash
+        env:
+          AWS_ACCESS_KEY_ID_VALUE: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY_VALUE: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_SESSION_TOKEN_VALUE: ${{ secrets.AWS_SESSION_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          ACCESS_KEY_PREFIX="${AWS_ACCESS_KEY_ID_VALUE:0:4}"
+
+          if [ -z "$AWS_ACCESS_KEY_ID_VALUE" ] || [ -z "$AWS_SECRET_ACCESS_KEY_VALUE" ]; then
+            echo "AWS credentials are missing."
+            exit 1
+          fi
+
+          if [ -z "$AWS_SESSION_TOKEN_VALUE" ]; then
+            echo "AWS_SESSION_TOKEN is required for this workflow."
+            exit 1
+          fi
+
+          if [ "$ACCESS_KEY_PREFIX" != "ASIA" ]; then
+            echo "Learner Lab credentials are expected to start with ASIA."
+            exit 1
+          fi
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v5
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
           aws-region: ${{ env.AWS_REGION }}
+
+      - name: Verify AWS identity
+        shell: bash
+        run: aws sts get-caller-identity
 
       - name: Login to Amazon ECR
         id: login-ecr

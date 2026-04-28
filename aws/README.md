@@ -70,6 +70,7 @@ Set these GitHub `Secrets`:
 - `AWS_REGION`
 - `AWS_ACCESS_KEY_ID`
 - `AWS_SECRET_ACCESS_KEY`
+- `AWS_SESSION_TOKEN`
 - `ECR_REPOSITORY`
 - `ECS_CLUSTER`
 - `ECS_SERVICE`
@@ -79,16 +80,22 @@ Set these GitHub `Secrets`:
 - `VITE_PAYMENT_SERVICE_URL`
 - `VITE_DELIVERY_SERVICE_URL`
 
-The AWS IAM user or temporary credentials behind these secrets must be allowed to:
+The AWS temporary credentials behind these secrets must be allowed to:
 
 - push to the target ECR repository
 - read and register ECS task definitions
 - update the target ECS service
 - pass any task execution role referenced by the task definition
 
-If you use long-lived IAM user credentials, do not set `AWS_SESSION_TOKEN`.
+This workflow is configured for temporary credentials such as AWS Learner Lab credentials.
 
-If you use temporary STS credentials instead, you must provide a fresh session token every time the temporary credentials rotate. An expired session token will fail immediately with `The security token included in the request is invalid`.
+You must update all three values together whenever the lab rotates them:
+
+- `AWS_ACCESS_KEY_ID`
+- `AWS_SECRET_ACCESS_KEY`
+- `AWS_SESSION_TOKEN`
+
+An expired or mismatched session token will fail immediately with `The security token included in the request is invalid`.
 
 ## AWS resources needed
 
@@ -104,6 +111,8 @@ The workflow updates the running frontend by reading the current task definition
 - The deploy workflow is frontend-only. Backend services are not built or deployed here.
 - The workflow assumes `jq` is available on `ubuntu-latest`, which is true in GitHub-hosted runners today.
 - If your ECS service uses a different deployment model such as blue/green through CodeDeploy, the deploy workflow should be adjusted.
+- For AWS Learner Lab demo use, this setup is temporary by design. Every time the lab session rotates credentials, update `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and `AWS_SESSION_TOKEN` together in GitHub Secrets before pushing again.
+- Keep `cd.yml` enabled on `main` only for the short demo window. After the demo, disable the workflow or remove the temporary AWS secrets.
 
 ## Relevant AWS docs
 
