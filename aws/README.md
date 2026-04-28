@@ -70,7 +70,6 @@ Set these GitHub `Secrets`:
 - `AWS_REGION`
 - `AWS_ACCESS_KEY_ID`
 - `AWS_SECRET_ACCESS_KEY`
-- `AWS_SESSION_TOKEN`
 - `ECR_REPOSITORY`
 - `ECS_CLUSTER`
 - `ECS_SERVICE`
@@ -86,6 +85,10 @@ The AWS IAM user or temporary credentials behind these secrets must be allowed t
 - read and register ECS task definitions
 - update the target ECS service
 - pass any task execution role referenced by the task definition
+
+If you use long-lived IAM user credentials, do not set `AWS_SESSION_TOKEN`.
+
+If you use temporary STS credentials instead, you must provide a fresh session token every time the temporary credentials rotate. An expired session token will fail immediately with `The security token included in the request is invalid`.
 
 ## AWS resources needed
 
