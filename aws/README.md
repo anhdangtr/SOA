@@ -67,21 +67,20 @@ It does:
 
 Set these GitHub `Secrets`:
 
-- `AWS_ROLE_TO_ASSUME`
-
-Set these GitHub `Variables`:
-
 - `AWS_REGION`
-- `FRONTEND_ECR_REPOSITORY`
-- `FRONTEND_ECS_CLUSTER`
-- `FRONTEND_ECS_SERVICE`
-- `FRONTEND_ECS_CONTAINER_NAME`
-- `FRONTEND_ECS_TASK_DEFINITION_FAMILY`
+- `AWS_ACCESS_KEY_ID`
+- `AWS_SECRET_ACCESS_KEY`
+- `AWS_SESSION_TOKEN`
+- `ECR_REPOSITORY`
+- `ECS_CLUSTER`
+- `ECS_SERVICE`
+- `ECS_CONTAINER_NAME`
+- `ECS_TASK_DEFINITION`
 - `VITE_ORDER_SERVICE_URL`
 - `VITE_PAYMENT_SERVICE_URL`
 - `VITE_DELIVERY_SERVICE_URL`
 
-`AWS_ROLE_TO_ASSUME` should be an IAM role trusted by GitHub OIDC and allowed to:
+The AWS IAM user or temporary credentials behind these secrets must be allowed to:
 
 - push to the target ECR repository
 - read and register ECS task definitions
@@ -93,9 +92,9 @@ Set these GitHub `Variables`:
 - 1 ECR repository for the frontend image
 - 1 ECS cluster
 - 1 ECS service for the frontend
-- 1 existing ECS task definition family whose container name matches `FRONTEND_ECS_CONTAINER_NAME`
+- 1 existing ECS task definition family whose container name matches `ECS_CONTAINER_NAME`
 
-The workflow updates the running frontend by reading the current task definition family from ECS and publishing a new revision with the new image tag.
+The workflow updates the running frontend by reading the current task definition from `ECS_TASK_DEFINITION` and publishing a new revision with the new image tag.
 
 ## Notes
 
