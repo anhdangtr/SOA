@@ -59,7 +59,7 @@ function Home() {
               className="mt-4 text-4xl font-black leading-[0.98] tracking-tight sm:text-5xl md:text-6xl lg:text-[5.25rem]"
             >
               <span className="bg-gradient-sun bg-clip-text text-transparent">
-                Traditional Taste
+                Ngon như Ý
               </span>
             </motion.h1>
             <motion.p
