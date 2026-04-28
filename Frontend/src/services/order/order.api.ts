@@ -34,7 +34,9 @@ export async function getAllOrders() {
 export function subscribe(listener: (orders: Record<string, Order>) => void) {
   void getAllOrders().then(listener);
   const interval = window.setInterval(() => {
-    void getAllOrders().then(listener).catch(() => {});
+    void getAllOrders()
+      .then(listener)
+      .catch(() => {});
   }, 3000);
 
   return () => window.clearInterval(interval);

@@ -2,12 +2,6 @@ name: Frontend CD
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
-    paths:
-      - "Frontend/**"
-      - ".github/workflows/cd.yml"
 
 permissions:
   contents: read

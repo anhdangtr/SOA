@@ -34,7 +34,8 @@ export const Route = createFileRoute("/")({
 
 function Home() {
   const trending = MENU.filter((m) => m.trending);
-  const heroImage = trending.find((item) => item.category === "salt-baked-chicken")?.image ?? "/menu/ga-1.jpg";
+  const heroImage =
+    trending.find((item) => item.category === "salt-baked-chicken")?.image ?? "/menu/ga-1.jpg";
 
   return (
     <main>

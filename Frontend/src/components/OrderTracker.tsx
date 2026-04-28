@@ -84,7 +84,8 @@ export function OrderTracker({ orderId }: { orderId: string }) {
 
   const cancelled = order.status === "CANCELLED";
   const canCancel = order.status !== "CANCELLED" && order.status !== "DELIVERED";
-  const isActivelyDelivering = order.status === "DELIVERING" && order.delivery?.status === "DELIVERING";
+  const isActivelyDelivering =
+    order.status === "DELIVERING" && order.delivery?.status === "DELIVERING";
   const currentIdx = STATUS_FLOW.indexOf(order.status);
   const progress = cancelled ? 0 : Math.max(0, (currentIdx / (STATUS_FLOW.length - 1)) * 100);
   const currentStatusStyle = STATUS_STYLES[order.status];

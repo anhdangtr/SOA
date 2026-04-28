@@ -1,14 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { motion } from "framer-motion";
-import {
-  Check,
-  Minus,
-  Plus,
-  ShoppingBag,
-  Square,
-  TicketPercent,
-  Trash2,
-} from "lucide-react";
+import { Check, Minus, Plus, ShoppingBag, Square, TicketPercent, Trash2 } from "lucide-react";
 import {
   cart,
   cartTotals,
@@ -38,10 +30,8 @@ function ReviewCartPage() {
   const reviewCartNavigate = useNavigate();
   const { lines: reviewCartLines, count: reviewCartCount } = cartTotals(reviewCartState);
   const reviewCartSelected = reviewCartSelectedLines(reviewCartState);
-  const {
-    count: reviewCartSelectedCount,
-    total: reviewCartSelectedTotal,
-  } = cartTotalsFromLines(reviewCartSelected);
+  const { count: reviewCartSelectedCount, total: reviewCartSelectedTotal } =
+    cartTotalsFromLines(reviewCartSelected);
   const reviewCartGrandTotal = reviewCartSelectedTotal + REVIEW_CART_SHIPPING_FEE;
   const reviewCartAllSelected =
     reviewCartLines.length > 0 && reviewCartSelectedIds.length === reviewCartLines.length;
@@ -136,7 +126,11 @@ function ReviewCartPage() {
                     }`}
                     aria-label={`Select ${reviewCartLine.item.name}`}
                   >
-                    {reviewCartChecked ? <Check className="h-5 w-5" /> : <Square className="h-5 w-5" />}
+                    {reviewCartChecked ? (
+                      <Check className="h-5 w-5" />
+                    ) : (
+                      <Square className="h-5 w-5" />
+                    )}
                   </button>
 
                   <img
@@ -147,7 +141,9 @@ function ReviewCartPage() {
 
                   <div className="min-w-0 flex-1">
                     <p className="line-clamp-1 text-base font-bold">{reviewCartLine.item.name}</p>
-                    <p className="mt-1 text-sm text-muted-foreground">{reviewCartLine.item.description}</p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {reviewCartLine.item.description}
+                    </p>
                     <div className="mt-3 flex flex-wrap items-center gap-3">
                       <span className="rounded-full bg-primary/15 px-3 py-1 text-sm font-semibold text-primary">
                         {formatPrice(reviewCartLine.item.price)}
@@ -167,7 +163,9 @@ function ReviewCartPage() {
                       >
                         <Minus className="h-4 w-4" />
                       </button>
-                      <span className="w-8 text-center text-sm font-bold">{reviewCartLine.qty}</span>
+                      <span className="w-8 text-center text-sm font-bold">
+                        {reviewCartLine.qty}
+                      </span>
                       <button
                         type="button"
                         onClick={() => cart.add(reviewCartLine.item)}
@@ -218,9 +216,16 @@ function ReviewCartPage() {
                     reviewCartSelectedCount === 1 ? "product" : "products"
                   }`}
                 />
-                <ReviewCartRow label="Selected subtotal" value={formatPrice(reviewCartSelectedTotal)} />
+                <ReviewCartRow
+                  label="Selected subtotal"
+                  value={formatPrice(reviewCartSelectedTotal)}
+                />
                 <ReviewCartRow label="Shipping fee" value={formatPrice(REVIEW_CART_SHIPPING_FEE)} />
-                <ReviewCartRow label="Estimated total" value={formatPrice(reviewCartGrandTotal)} bold />
+                <ReviewCartRow
+                  label="Estimated total"
+                  value={formatPrice(reviewCartGrandTotal)}
+                  bold
+                />
               </div>
             </div>
 
@@ -251,15 +256,7 @@ function ReviewCartPage() {
   );
 }
 
-function ReviewCartRow({
-  label,
-  value,
-  bold,
-}: {
-  label: string;
-  value: string;
-  bold?: boolean;
-}) {
+function ReviewCartRow({ label, value, bold }: { label: string; value: string; bold?: boolean }) {
   return (
     <div className={`flex items-center justify-between gap-3 ${bold ? "text-base font-bold" : ""}`}>
       <span className={bold ? "" : "text-muted-foreground"}>{label}</span>

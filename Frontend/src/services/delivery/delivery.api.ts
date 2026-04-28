@@ -14,7 +14,10 @@ export async function getDelivery(orderId: string) {
 }
 
 export async function markDelivered(orderId: string) {
-  await httpJson<{ success: boolean }>(`${appConfig.deliveryServiceUrl}/deliveries/${orderId}/delivered`, {
-    method: "PATCH",
-  });
+  await httpJson<{ success: boolean }>(
+    `${appConfig.deliveryServiceUrl}/deliveries/${orderId}/delivered`,
+    {
+      method: "PATCH",
+    },
+  );
 }

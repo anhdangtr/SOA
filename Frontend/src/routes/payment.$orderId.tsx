@@ -11,7 +11,10 @@ export const Route = createFileRoute("/payment/$orderId")({
   head: () => ({
     meta: [
       { title: "Payment - Chau Ngoc Thao" },
-      { name: "description", content: "Complete payment for an order that has already been created." },
+      {
+        name: "description",
+        content: "Complete payment for an order that has already been created.",
+      },
     ],
   }),
   component: PaymentPage,
@@ -83,7 +86,8 @@ function PaymentPage() {
     );
   }
 
-  const alreadyCompleted = order.status !== "PENDING_PAYMENT" || order.payment?.status === "SUCCESS";
+  const alreadyCompleted =
+    order.status !== "PENDING_PAYMENT" || order.payment?.status === "SUCCESS";
   const activeMethod = method ?? (order.paymentMethod === "pending" ? null : order.paymentMethod);
 
   const handleCancel = () => {
@@ -242,11 +246,19 @@ function PaymentPage() {
                   </button>
                   <button
                     type="button"
-                    onClick={alreadyCompleted ? () => navigate({ to: "/order/$orderId", params: { orderId: order.id } }) : handleSuccess}
+                    onClick={
+                      alreadyCompleted
+                        ? () => navigate({ to: "/order/$orderId", params: { orderId: order.id } })
+                        : handleSuccess
+                    }
                     disabled={processing}
                     className="w-full rounded-2xl bg-primary px-4 py-3 text-sm font-bold text-primary-foreground shadow-glow transition hover:brightness-95 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    {processing ? "Processing..." : alreadyCompleted ? "View Order" : "Payment Successful"}
+                    {processing
+                      ? "Processing..."
+                      : alreadyCompleted
+                        ? "View Order"
+                        : "Payment Successful"}
                   </button>
                 </div>
               </div>
@@ -281,11 +293,19 @@ function PaymentPage() {
                   </button>
                   <button
                     type="button"
-                    onClick={alreadyCompleted ? () => navigate({ to: "/order/$orderId", params: { orderId: order.id } }) : handleSuccess}
+                    onClick={
+                      alreadyCompleted
+                        ? () => navigate({ to: "/order/$orderId", params: { orderId: order.id } })
+                        : handleSuccess
+                    }
                     disabled={processing}
                     className="w-full rounded-2xl bg-primary px-4 py-3 text-sm font-bold text-primary-foreground shadow-glow transition hover:brightness-95 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    {processing ? "Processing..." : alreadyCompleted ? "View Order" : "Payment Successful"}
+                    {processing
+                      ? "Processing..."
+                      : alreadyCompleted
+                        ? "View Order"
+                        : "Payment Successful"}
                   </button>
                 </div>
               </div>
@@ -297,8 +317,9 @@ function PaymentPage() {
                   <Truck className="h-5 w-5 text-primary" />
                   <p className="text-lg font-bold">Cash on delivery</p>
                 </div>
-                <div className="rounded-2xl border border-border bg-card p-4 text-sm text-muted-foreground">You do not need online payment. Confirm Cash on Delivery (COD) here, and the order will be transferred to shipping immediately.
-                  
+                <div className="rounded-2xl border border-border bg-card p-4 text-sm text-muted-foreground">
+                  You do not need online payment. Confirm Cash on Delivery (COD) here, and the order
+                  will be transferred to shipping immediately.
                 </div>
                 <div className="flex flex-col gap-3 sm:flex-row">
                   <button
@@ -311,7 +332,11 @@ function PaymentPage() {
                   </button>
                   <button
                     type="button"
-                    onClick={alreadyCompleted ? () => navigate({ to: "/order/$orderId", params: { orderId: order.id } }) : handleSuccess}
+                    onClick={
+                      alreadyCompleted
+                        ? () => navigate({ to: "/order/$orderId", params: { orderId: order.id } })
+                        : handleSuccess
+                    }
                     disabled={processing}
                     className="w-full rounded-2xl bg-primary px-4 py-3 text-sm font-bold text-primary-foreground shadow-glow transition hover:brightness-95 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
                   >
@@ -338,7 +363,11 @@ function PaymentPage() {
               <PriceRow label="Shipping fee" value={formatPrice(order.shippingFee)} />
               <PriceRow
                 label="Discount"
-                value={order.discountAmount > 0 ? `- ${formatPrice(order.discountAmount)}` : formatPrice(0)}
+                value={
+                  order.discountAmount > 0
+                    ? `- ${formatPrice(order.discountAmount)}`
+                    : formatPrice(0)
+                }
               />
             </div>
 
@@ -382,7 +411,8 @@ function TransferQrCard() {
     <div className="rounded-2xl border border-border bg-card p-4">
       <div className="grid grid-cols-7 gap-1 rounded-2xl bg-white p-3 shadow-card">
         {Array.from({ length: 49 }, (_, index) => {
-          const filled = [0, 1, 5, 6, 7, 13, 35, 41, 42, 43, 47, 48].includes(index) || index % 3 === 0;
+          const filled =
+            [0, 1, 5, 6, 7, 13, 35, 41, 42, 43, 47, 48].includes(index) || index % 3 === 0;
 
           return (
             <span

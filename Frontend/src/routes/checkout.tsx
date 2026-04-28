@@ -18,7 +18,10 @@ export const Route = createFileRoute("/checkout")({
   head: () => ({
     meta: [
       { title: "Checkout - Chau Ngoc Thao" },
-      { name: "description", content: "Complete delivery details and choose how to place the order." },
+      {
+        name: "description",
+        content: "Complete delivery details and choose how to place the order.",
+      },
     ],
   }),
   component: CheckoutPage,
@@ -272,7 +275,9 @@ function CheckoutPage() {
                     <PriceRow label="Shipping fee" value={formatPrice(SHIPPING_FEE)} />
                     <PriceRow
                       label="Promo discount"
-                      value={discountAmount > 0 ? `- ${formatPrice(discountAmount)}` : formatPrice(0)}
+                      value={
+                        discountAmount > 0 ? `- ${formatPrice(discountAmount)}` : formatPrice(0)
+                      }
                     />
                   </div>
                   <div className="mt-4 rounded-2xl bg-primary/15 p-4">
@@ -357,7 +362,8 @@ function CheckoutPage() {
                       <p className="text-sm font-bold">Demo promo codes</p>
                     </div>
                     <p className="mt-2 text-xs text-muted-foreground">
-                      `WELCOME10` saves 10k, `SUNNY15` saves 15k, `SHIPFREE` removes the shipping fee.
+                      `WELCOME10` saves 10k, `SUNNY15` saves 15k, `SHIPFREE` removes the shipping
+                      fee.
                     </p>
                     <p className="mt-2 text-xs font-semibold text-foreground/70">
                       {promoRule
@@ -379,7 +385,8 @@ function CheckoutPage() {
                     <div>
                       <p className="text-sm font-bold">Delivery destination</p>
                       <p className="mt-1 text-sm text-muted-foreground">
-                        {[houseNumber, ward, province].filter(Boolean).join(", ") || "Choose an address"}
+                        {[houseNumber, ward, province].filter(Boolean).join(", ") ||
+                          "Choose an address"}
                       </p>
                     </div>
                   </div>
@@ -389,14 +396,17 @@ function CheckoutPage() {
                     <PriceRow label="Shipping" value={formatPrice(SHIPPING_FEE)} />
                     <PriceRow
                       label="Discount"
-                      value={discountAmount > 0 ? `- ${formatPrice(discountAmount)}` : formatPrice(0)}
+                      value={
+                        discountAmount > 0 ? `- ${formatPrice(discountAmount)}` : formatPrice(0)
+                      }
                     />
                   </div>
 
                   <div className="mt-5 rounded-2xl bg-primary/10 p-4 text-sm">
                     <p className="font-bold">Please check the information</p>
                     <p className="mt-1 text-muted-foreground">
-                      If correct, click Continue to place the order. You will have a chance to review the order summary again before confirming payment.
+                      If correct, click Continue to place the order. You will have a chance to
+                      review the order summary again before confirming payment.
                     </p>
                   </div>
 
