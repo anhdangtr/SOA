@@ -5,15 +5,14 @@ on:
 
 permissions:
   contents: read
-  id-token: write
 
 env:
-  AWS_REGION: ${{ vars.AWS_REGION }}
-  ECR_REPOSITORY: ${{ vars.FRONTEND_ECR_REPOSITORY }}
-  ECS_CLUSTER: ${{ vars.FRONTEND_ECS_CLUSTER }}
-  ECS_SERVICE: ${{ vars.FRONTEND_ECS_SERVICE }}
-  ECS_CONTAINER_NAME: ${{ vars.FRONTEND_ECS_CONTAINER_NAME }}
-  ECS_TASK_DEFINITION_FAMILY: ${{ vars.FRONTEND_ECS_TASK_DEFINITION_FAMILY }}
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+  ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
+  ECS_CLUSTER: ${{ secrets.ECS_CLUSTER }}
+  ECS_SERVICE: ${{ secrets.ECS_SERVICE }}
+  ECS_CONTAINER_NAME: ${{ secrets.ECS_CONTAINER_NAME }}
+  ECS_TASK_DEFINITION_FAMILY: ${{ secrets.ECS_TASK_DEFINITION }}
 
 jobs:
   deploy:
@@ -26,7 +25,9 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Login to Amazon ECR
@@ -52,9 +53,9 @@ jobs:
             --target production \
             --build-arg VITE_API_MODE=live \
             --build-arg VITE_DELIVERY_API_MODE=live \
-            --build-arg VITE_ORDER_SERVICE_URL="${{ vars.VITE_ORDER_SERVICE_URL }}" \
-            --build-arg VITE_PAYMENT_SERVICE_URL="${{ vars.VITE_PAYMENT_SERVICE_URL }}" \
-            --build-arg VITE_DELIVERY_SERVICE_URL="${{ vars.VITE_DELIVERY_SERVICE_URL }}" \
+            --build-arg VITE_ORDER_SERVICE_URL="${{ secrets.VITE_ORDER_SERVICE_URL }}" \
+            --build-arg VITE_PAYMENT_SERVICE_URL="${{ secrets.VITE_PAYMENT_SERVICE_URL }}" \
+            --build-arg VITE_DELIVERY_SERVICE_URL="${{ secrets.VITE_DELIVERY_SERVICE_URL }}" \
             -t "$IMAGE_URI" \
             -t "${{ steps.login-ecr.outputs.registry }}/${ECR_REPOSITORY}:latest" \
             .
