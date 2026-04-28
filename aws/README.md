@@ -32,83 +32,78 @@ Then set:
 
 The repository is prepared for this delivery flow:
 
-`GitHub -> AWS CodePipeline -> AWS CodeBuild -> Amazon ECR -> Amazon ECS`
+`GitHub Actions -> Amazon ECR -> Amazon ECS`
 
-GitHub is only the source provider in this setup. Build and deploy happen on AWS.
+GitHub Actions handles CI/CD. AWS hosts the container image and the running frontend service.
 
-## Source stage: GitHub to CodePipeline
+## GitHub Actions workflows
 
-Use a `GitHub (via GitHub App)` source action through AWS CodeConnections.
+This repository uses:
 
-AWS documentation:
+- [ci.yml](D:/UIT/Nam3_2/Microservice/GaUMuoi/.github/workflows/ci.yml)
+- [cd.yml](D:/UIT/Nam3_2/Microservice/GaUMuoi/.github/workflows/cd.yml)
 
-- [GitHub connections](https://docs.aws.amazon.com/codepipeline/latest/userguide/connections-github.html)
-- [Add third-party source providers with CodeConnections](https://docs.aws.amazon.com/codepipeline/latest/userguide/pipelines-connections.html)
+`ci.yml` runs for frontend changes on pull requests and pushes to `main` or `develop`.
 
-Recommended source settings:
+It does:
 
-- Branch: `main`
-- Output artifact name: `SourceArtifact`
+- `npm ci`
+- `npm run lint`
+- `npm run build`
+- frontend production Docker build smoke check
 
-Important region note:
+`cd.yml` runs for frontend changes on pushes to `main` and on manual dispatch.
 
-AWS notes that GitHub connections are not available in some regions. Check the current regional limitations in the GitHub connections documentation before creating the pipeline.
+It does:
 
-## Build stage: CodeBuild to ECR
+- configures AWS credentials from GitHub
+- builds the frontend Docker image
+- pushes the image to Amazon ECR with `latest` and `<commit-sha>` tags
+- fetches the current ECS task definition
+- replaces the frontend container image
+- deploys the new task definition to ECS
 
-The root-level [buildspec.yml](D:/UIT/Nam3_2/Microservice/GaUMuoi/buildspec.yml) is the build definition for CodeBuild.
+## GitHub repository configuration
 
-What the build does:
+Set these GitHub `Secrets`:
 
-- installs dependencies for `Frontend`
-- runs frontend lint and production build
-- builds the frontend production Docker image
-- pushes the image to Amazon ECR with both `latest` and `<commit-sha>` tags
-- exports the ECS deployment artifact `imagedefinitions-frontend.json`
+- `AWS_ROLE_TO_ASSUME`
 
-Use these CodeBuild settings:
+Set these GitHub `Variables`:
 
-- Source provider: `CodePipeline`
-- Buildspec: `buildspec.yml`
-- Environment image: `aws/codebuild/standard:7.0` or newer
-- Privileged mode: `Enabled`
-- Compute type: `BUILD_GENERAL1_MEDIUM` or larger
-
-Set CodeBuild environment variables from [codebuild.env.example](D:/UIT/Nam3_2/Microservice/GaUMuoi/aws/codebuild.env.example):
-
-- `AWS_ACCOUNT_ID`
-- `AWS_DEFAULT_REGION`
-- `FRONTEND_ECR_REPO`
-- `FRONTEND_CONTAINER_NAME`
+- `AWS_REGION`
+- `FRONTEND_ECR_REPOSITORY`
+- `FRONTEND_ECS_CLUSTER`
+- `FRONTEND_ECS_SERVICE`
+- `FRONTEND_ECS_CONTAINER_NAME`
+- `FRONTEND_ECS_TASK_DEFINITION_FAMILY`
 - `VITE_ORDER_SERVICE_URL`
 - `VITE_PAYMENT_SERVICE_URL`
 - `VITE_DELIVERY_SERVICE_URL`
 
-Before the first pipeline run, create the frontend ECR repository referenced above.
+`AWS_ROLE_TO_ASSUME` should be an IAM role trusted by GitHub OIDC and allowed to:
 
-AWS documentation:
+- push to the target ECR repository
+- read and register ECS task definitions
+- update the target ECS service
+- pass any task execution role referenced by the task definition
 
-- [Tutorial: Amazon ECS Standard Deployment with CodePipeline](https://docs.aws.amazon.com/codepipeline/latest/userguide/ecs-cd-pipeline.html)
-- [Image definitions file reference](https://docs.aws.amazon.com/codepipeline/latest/userguide/file-reference.html)
-- [Amazon ECS deploy action reference](https://docs.aws.amazon.com/codepipeline/latest/userguide/action-reference-ECS.html)
+## AWS resources needed
 
-## Deploy stage: ECR to ECS
+- 1 ECR repository for the frontend image
+- 1 ECS cluster
+- 1 ECS service for the frontend
+- 1 existing ECS task definition family whose container name matches `FRONTEND_ECS_CONTAINER_NAME`
 
-This repo is prepared for Amazon ECS standard deploy actions in CodePipeline.
+The workflow updates the running frontend by reading the current task definition family from ECS and publishing a new revision with the new image tag.
 
-Create 1 ECS deploy action in the deploy stage, consuming the `BuildArtifact` output from CodeBuild:
+## Notes
 
-1. `DeployFrontend`
-   File name: `imagedefinitions-frontend.json`
+- The deploy workflow is frontend-only. Backend services are not built or deployed here.
+- The workflow assumes `jq` is available on `ubuntu-latest`, which is true in GitHub-hosted runners today.
+- If your ECS service uses a different deployment model such as blue/green through CodeDeploy, the deploy workflow should be adjusted.
 
-For the deploy action, configure:
+## Relevant AWS docs
 
-- the target ECS cluster
-- the target frontend ECS service
-- the container name in the ECS task definition matching the value used in `buildspec.yml`
-
-The frontend ECS service should already exist with a task definition. CodePipeline will register a new task definition revision using the image URI from `imagedefinitions-frontend.json`.
-
-## GitHub Actions status
-
-GitHub Actions CI/CD workflows were removed so the repository follows a single pipeline path through AWS services.
+- [Amazon ECR login action](https://github.com/aws-actions/amazon-ecr-login)
+- [Amazon ECS deploy task definition action](https://github.com/aws-actions/amazon-ecs-deploy-task-definition)

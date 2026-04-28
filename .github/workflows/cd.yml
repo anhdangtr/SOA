@@ -1,0 +1,103 @@
+name: Frontend CD
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - "Frontend/**"
+      - ".github/workflows/cd.yml"
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION }}
+  ECR_REPOSITORY: ${{ vars.FRONTEND_ECR_REPOSITORY }}
+  ECS_CLUSTER: ${{ vars.FRONTEND_ECS_CLUSTER }}
+  ECS_SERVICE: ${{ vars.FRONTEND_ECS_SERVICE }}
+  ECS_CONTAINER_NAME: ${{ vars.FRONTEND_ECS_CONTAINER_NAME }}
+  ECS_TASK_DEFINITION_FAMILY: ${{ vars.FRONTEND_ECS_TASK_DEFINITION_FAMILY }}
+
+jobs:
+  deploy:
+    name: Build Push And Deploy Frontend
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Extract image metadata
+        id: meta
+        shell: bash
+        run: |
+          set -euo pipefail
+          SHORT_SHA="${GITHUB_SHA::7}"
+          IMAGE_URI="${{ steps.login-ecr.outputs.registry }}/${ECR_REPOSITORY}:${SHORT_SHA}"
+          echo "short_sha=${SHORT_SHA}" >> "$GITHUB_OUTPUT"
+          echo "image_uri=${IMAGE_URI}" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push frontend image
+        working-directory: Frontend
+        env:
+          IMAGE_URI: ${{ steps.meta.outputs.image_uri }}
+        run: |
+          docker build \
+            --target production \
+            --build-arg VITE_API_MODE=live \
+            --build-arg VITE_DELIVERY_API_MODE=live \
+            --build-arg VITE_ORDER_SERVICE_URL="${{ vars.VITE_ORDER_SERVICE_URL }}" \
+            --build-arg VITE_PAYMENT_SERVICE_URL="${{ vars.VITE_PAYMENT_SERVICE_URL }}" \
+            --build-arg VITE_DELIVERY_SERVICE_URL="${{ vars.VITE_DELIVERY_SERVICE_URL }}" \
+            -t "$IMAGE_URI" \
+            -t "${{ steps.login-ecr.outputs.registry }}/${ECR_REPOSITORY}:latest" \
+            .
+
+          docker push "$IMAGE_URI"
+          docker push "${{ steps.login-ecr.outputs.registry }}/${ECR_REPOSITORY}:latest"
+
+      - name: Download current task definition
+        shell: bash
+        run: |
+          set -euo pipefail
+          aws ecs describe-task-definition \
+            --task-definition "$ECS_TASK_DEFINITION_FAMILY" \
+            --query taskDefinition > task-definition.json
+
+          jq 'del(
+            .taskDefinitionArn,
+            .revision,
+            .status,
+            .requiresAttributes,
+            .compatibilities,
+            .registeredAt,
+            .registeredBy
+          )' task-definition.json > task-definition.clean.json
+
+      - name: Render new task definition
+        id: task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: task-definition.clean.json
+          container-name: ${{ env.ECS_CONTAINER_NAME }}
+          image: ${{ steps.meta.outputs.image_uri }}
+
+      - name: Deploy to Amazon ECS
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.task-def.outputs.task-definition }}
+          service: ${{ env.ECS_SERVICE }}
+          cluster: ${{ env.ECS_CLUSTER }}
+          wait-for-service-stability: true
