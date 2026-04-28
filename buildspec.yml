@@ -1,0 +1,53 @@
+version: 0.2
+
+env:
+  shell: bash
+  variables:
+    CI: "true"
+
+phases:
+  install:
+    runtime-versions:
+      nodejs: 22
+    commands:
+      - set -euo pipefail
+      - echo "Using Node $(node --version) and npm $(npm --version)"
+
+  pre_build:
+    commands:
+      - echo "Installing frontend dependencies"
+      - cd Frontend && npm ci && cd ..
+      - echo "Installing Backend_Order dependencies"
+      - cd Backend_Order && npm ci && cd ..
+      - echo "Installing Backend_Payment dependencies"
+      - cd Backend_Payment && npm ci && cd ..
+      - echo "Installing Backend_Delivery dependencies"
+      - cd Backend_Delivery && npm ci && cd ..
+
+  build:
+    commands:
+      - echo "Running frontend lint"
+      - cd Frontend && npm run lint && cd ..
+      - echo "Running frontend production build"
+      - cd Frontend && npm run build && cd ..
+      - echo "Running backend syntax checks"
+      - cd Backend_Order && node --check server.js && cd ..
+      - cd Backend_Payment && node --check server.js && cd ..
+      - cd Backend_Delivery && npm run check && cd ..
+      - echo "Building production Docker images"
+      - docker build --target production -t gaumuoi-frontend-ci ./Frontend
+      - docker build --target production -t gaumuoi-backend-order-ci ./Backend_Order
+      - docker build --target production -t gaumuoi-backend-payment-ci ./Backend_Payment
+      - docker build --target production -t gaumuoi-backend-delivery-ci ./Backend_Delivery
+
+  post_build:
+    commands:
+      - echo "CI completed successfully at $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+
+artifacts:
+  files:
+    - buildspec.yml
+
+cache:
+  paths:
+    - /root/.npm/**/*

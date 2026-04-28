@@ -23,9 +23,9 @@ COPY . .
 
 ARG VITE_API_MODE=live
 ARG VITE_DELIVERY_API_MODE=live
-ARG VITE_ORDER_SERVICE_URL=http://localhost:8081
-ARG VITE_PAYMENT_SERVICE_URL=http://localhost:8082
-ARG VITE_DELIVERY_SERVICE_URL=http://localhost:8083
+ARG VITE_ORDER_SERVICE_URL
+ARG VITE_PAYMENT_SERVICE_URL
+ARG VITE_DELIVERY_SERVICE_URL
 
 ENV VITE_API_MODE=$VITE_API_MODE
 ENV VITE_DELIVERY_API_MODE=$VITE_DELIVERY_API_MODE
@@ -42,8 +42,11 @@ WORKDIR /app
 RUN npm install -g serve
 
 COPY --from=builder /app/dist ./dist
+COPY docker-entrypoint.sh ./docker-entrypoint.sh
+
+RUN chmod +x ./docker-entrypoint.sh
 
 ENV NODE_ENV=production
 EXPOSE 3000
 
-CMD ["serve", "-s", "dist", "-l", "3000"]
+CMD ["./docker-entrypoint.sh"]

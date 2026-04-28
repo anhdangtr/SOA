@@ -1,0 +1,38 @@
+services:
+  backend-order:
+    image: ghcr.io/${IMAGE_OWNER}/gaumuoi-backend-order:${IMAGE_TAG}
+    restart: unless-stopped
+    env_file:
+      - ./env/backend-order.env
+    ports:
+      - "8081:8081"
+
+  backend-payment:
+    image: ghcr.io/${IMAGE_OWNER}/gaumuoi-backend-payment:${IMAGE_TAG}
+    restart: unless-stopped
+    env_file:
+      - ./env/backend-payment.env
+    ports:
+      - "8082:8082"
+
+  backend-delivery:
+    image: ghcr.io/${IMAGE_OWNER}/gaumuoi-backend-delivery:${IMAGE_TAG}
+    restart: unless-stopped
+    env_file:
+      - ./env/backend-delivery.env
+    ports:
+      - "8083:8083"
+
+  frontend:
+    image: ghcr.io/${IMAGE_OWNER}/gaumuoi-frontend:${IMAGE_TAG}
+    restart: unless-stopped
+    environment:
+      VITE_ORDER_SERVICE_URL: ${VITE_ORDER_SERVICE_URL}
+      VITE_PAYMENT_SERVICE_URL: ${VITE_PAYMENT_SERVICE_URL}
+      VITE_DELIVERY_SERVICE_URL: ${VITE_DELIVERY_SERVICE_URL}
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend-order
+      - backend-payment
+      - backend-delivery
