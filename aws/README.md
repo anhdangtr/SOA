@@ -28,45 +28,87 @@ Then set:
 - `DB_PASSWORD` to the matching password
 - service URLs to the real ECS/ALB URLs when you deploy to AWS
 
-## CI with CodeCommit + CodeBuild
+## Pipeline target
 
-If you want CI on AWS, the usual setup is:
+The repository is prepared for this delivery flow:
 
-1. Store the repo in AWS CodeCommit.
-2. Create an AWS CodeBuild project that uses this repository as its source.
-3. Point the build project to the root-level `buildspec.yml`.
-4. Enable Docker privileged mode in CodeBuild, because the CI job also validates all production Docker images.
+`GitHub -> AWS CodePipeline -> AWS CodeBuild -> Amazon ECR -> Amazon ECS`
 
-Suggested CodeBuild settings:
+GitHub is only the source provider in this setup. Build and deploy happen on AWS.
 
-- Source provider: `AWS CodeCommit`
-- Buildspec: `Use a buildspec file`
-- Buildspec name: `buildspec.yml`
+## Source stage: GitHub to CodePipeline
+
+Use a `GitHub (via GitHub App)` source action through AWS CodeConnections.
+
+AWS documentation:
+
+- [GitHub connections](https://docs.aws.amazon.com/codepipeline/latest/userguide/connections-github.html)
+- [Add third-party source providers with CodeConnections](https://docs.aws.amazon.com/codepipeline/latest/userguide/pipelines-connections.html)
+
+Recommended source settings:
+
+- Branch: `main`
+- Output artifact name: `SourceArtifact`
+
+Important region note:
+
+AWS notes that GitHub connections are not available in some regions. Check the current regional limitations in the GitHub connections documentation before creating the pipeline.
+
+## Build stage: CodeBuild to ECR
+
+The root-level [buildspec.yml](D:/UIT/Nam3_2/Microservice/GaUMuoi/buildspec.yml) is the build definition for CodeBuild.
+
+What the build does:
+
+- installs dependencies for `Frontend`
+- runs frontend lint and production build
+- builds the frontend production Docker image
+- pushes the image to Amazon ECR with both `latest` and `<commit-sha>` tags
+- exports the ECS deployment artifact `imagedefinitions-frontend.json`
+
+Use these CodeBuild settings:
+
+- Source provider: `CodePipeline`
+- Buildspec: `buildspec.yml`
 - Environment image: `aws/codebuild/standard:7.0` or newer
-- Privileged: `Enabled`
+- Privileged mode: `Enabled`
 - Compute type: `BUILD_GENERAL1_MEDIUM` or larger
 
-What the CI job does:
+Set CodeBuild environment variables from [codebuild.env.example](D:/UIT/Nam3_2/Microservice/GaUMuoi/aws/codebuild.env.example):
 
-- installs dependencies for `Frontend`, `Backend_Order`, `Backend_Payment`, and `Backend_Delivery`
-- runs frontend lint and production build
-- runs syntax checks for all backend services
-- builds the production Docker image for every service
+- `AWS_ACCOUNT_ID`
+- `AWS_DEFAULT_REGION`
+- `FRONTEND_ECR_REPO`
+- `FRONTEND_CONTAINER_NAME`
+- `VITE_ORDER_SERVICE_URL`
+- `VITE_PAYMENT_SERVICE_URL`
+- `VITE_DELIVERY_SERVICE_URL`
 
-## Triggering builds from CodeCommit
+Before the first pipeline run, create the frontend ECR repository referenced above.
 
-In CodeBuild, enable automatic builds for:
+AWS documentation:
 
-- pushes to `main`
-- pull request events if you use a review flow around feature branches
+- [Tutorial: Amazon ECS Standard Deployment with CodePipeline](https://docs.aws.amazon.com/codepipeline/latest/userguide/ecs-cd-pipeline.html)
+- [Image definitions file reference](https://docs.aws.amazon.com/codepipeline/latest/userguide/file-reference.html)
+- [Amazon ECS deploy action reference](https://docs.aws.amazon.com/codepipeline/latest/userguide/action-reference-ECS.html)
 
-If you prefer a fuller pipeline later, you can place this CodeBuild project behind AWS CodePipeline, but for CI only, CodeBuild + CodeCommit is enough.
+## Deploy stage: ECR to ECS
 
-## Important note about CodeCommit availability
+This repo is prepared for Amazon ECS standard deploy actions in CodePipeline.
 
-AWS's official pages are inconsistent right now:
+Create 1 ECS deploy action in the deploy stage, consuming the `BuildArtifact` output from CodeBuild:
 
-- the CodeCommit pricing page currently says CodeCommit is "no longer available to new customers" ([pricing](https://aws.amazon.com/codecommit/pricing/))
-- the CodeCommit document history says it became available to new customers again on November 25, 2025 ([document history](https://docs.aws.amazon.com/codecommit/latest/userguide/history.html))
+1. `DeployFrontend`
+   File name: `imagedefinitions-frontend.json`
 
-So if your AWS account cannot create a new CodeCommit repository, that is likely an AWS account-eligibility issue rather than a problem with this project setup.
+For the deploy action, configure:
+
+- the target ECS cluster
+- the target frontend ECS service
+- the container name in the ECS task definition matching the value used in `buildspec.yml`
+
+The frontend ECS service should already exist with a task definition. CodePipeline will register a new task definition revision using the image URI from `imagedefinitions-frontend.json`.
+
+## GitHub Actions status
+
+GitHub Actions CI/CD workflows were removed so the repository follows a single pipeline path through AWS services.
